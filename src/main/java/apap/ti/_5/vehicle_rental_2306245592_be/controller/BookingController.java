@@ -34,7 +34,17 @@ public class BookingController {
         }
         
         BaseResponseDTO<List<RentalBooking>> response = new BaseResponseDTO<>(
-            200, "Success", new Date(), bookings
+            200, "Bookings retrieved successfully (Total: " + bookings.size() + ")", new Date(), bookings
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/count")
+    public ResponseEntity<BaseResponseDTO<Integer>> getBookingCount() {
+        int count = bookingService.getAllBookings().size();
+        
+        BaseResponseDTO<Integer> response = new BaseResponseDTO<>(
+            200, "Success", new Date(), count
         );
         return ResponseEntity.ok(response);
     }
@@ -98,4 +108,4 @@ public class BookingController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
-}
+}   

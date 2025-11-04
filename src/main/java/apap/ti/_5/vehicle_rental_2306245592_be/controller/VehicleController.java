@@ -59,6 +59,26 @@ public class VehicleController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @GetMapping("/count")
+    public ResponseEntity<BaseResponseDTO<Integer>> getVehicleCount() {
+        int count = vehicleService.getAllVehicles().size();
+        
+        BaseResponseDTO<Integer> response = new BaseResponseDTO<>(
+            200, "Vehicles retrieved successfully", new Date(), count
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/vendor/count")
+    public ResponseEntity<BaseResponseDTO<Integer>> getVendorCount() {
+        int count = vehicleService.getAllVendors().size();
+        
+        BaseResponseDTO<Integer> response = new BaseResponseDTO<>(
+            200, "Vendors retrieved successfully", new Date(), count
+        );
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping
     public ResponseEntity<BaseResponseDTO<Vehicle>> createVehicle(@RequestBody Vehicle vehicle) {
         Vehicle createdVehicle = vehicleService.createVehicle(vehicle);

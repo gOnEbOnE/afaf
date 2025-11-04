@@ -1,6 +1,8 @@
 package apap.ti._5.vehicle_rental_2306245592_be.service;
 
+import apap.ti._5.vehicle_rental_2306245592_be.model.RentalVendor;
 import apap.ti._5.vehicle_rental_2306245592_be.model.Vehicle;
+import apap.ti._5.vehicle_rental_2306245592_be.repository.RentalVendorRepository;
 import apap.ti._5.vehicle_rental_2306245592_be.repository.VehicleRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,14 +15,21 @@ import java.util.Optional;
 public class VehicleServiceImpl implements VehicleService {
 
     private final VehicleRepository vehicleRepository;
+    private final RentalVendorRepository rentalVendorRepository;
 
-    public VehicleServiceImpl(VehicleRepository vehicleRepository) {
+    public VehicleServiceImpl(VehicleRepository vehicleRepository, RentalVendorRepository rentalVendorRepository) {
         this.vehicleRepository = vehicleRepository;
+        this.rentalVendorRepository = rentalVendorRepository;
     }
 
     @Override
     public List<Vehicle> getAllVehicles() {
         return vehicleRepository.findAll();
+    }
+    
+    @Override
+    public List<RentalVendor> getAllVendors() {
+        return rentalVendorRepository.findAll();
     }
 
     @Override

@@ -1,5 +1,6 @@
 package apap.ti._5.vehicle_rental_2306245592_be.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -24,6 +25,7 @@ public class Vehicle {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "rental_vendor_id", nullable = false)
+    @JsonBackReference
     private RentalVendor rentalVendor;
     
     @Column(nullable = false)

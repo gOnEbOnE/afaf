@@ -2,8 +2,10 @@ package apap.ti._5.vehicle_rental_2306245592_be;
 
 import apap.ti._5.vehicle_rental_2306245592_be.model.RentalAddOn;
 import apap.ti._5.vehicle_rental_2306245592_be.model.RentalVendor;
+import apap.ti._5.vehicle_rental_2306245592_be.model.Vehicle;
 import apap.ti._5.vehicle_rental_2306245592_be.repository.RentalAddOnRepository;
 import apap.ti._5.vehicle_rental_2306245592_be.repository.RentalVendorRepository;
+import apap.ti._5.vehicle_rental_2306245592_be.repository.VehicleRepository;
 import com.github.javafaker.Faker;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -26,14 +28,16 @@ public class VehicleRental2306245592BeApplication {
     @Profile("!test")
     public CommandLineRunner createDummyData(
             RentalVendorRepository rentalVendorRepository,
-            RentalAddOnRepository rentalAddOnRepository) {
+            RentalAddOnRepository rentalAddOnRepository,
+            VehicleRepository vehicleRepository) {
         return args -> {
             System.out.println("Generating dummy data...");
             Faker faker = new Faker(Locale.of("id_ID"));
 
             // Generate RentalVendors
             System.out.println("Generating dummy rental vendors...");
-            for (int i = 0; i < 10; i++) {
+            List<RentalVendor> vendors = new ArrayList<>();
+            for (int i = 0; i < 5; i++) {
                 RentalVendor vendor = new RentalVendor();
                 vendor.setName(faker.company().name() + " Rental");
                 vendor.setEmail(faker.internet().emailAddress());
@@ -45,7 +49,7 @@ public class VehicleRental2306245592BeApplication {
                 }
                 vendor.setListOfLocations(locations);
                 
-                rentalVendorRepository.save(vendor);
+                vendors.add(rentalVendorRepository.save(vendor));
             }
             System.out.println("✅ Dummy rental vendors generation complete.");
 
@@ -71,6 +75,36 @@ public class VehicleRental2306245592BeApplication {
                 rentalAddOnRepository.save(addOn);
             }
             System.out.println("✅ Dummy rental add-ons generation complete.");
+
+            // Generate Vehicles
+            System.out.println("Generating dummy vehicles...");
+            String[] vehicleTypes = {"SUV", "MPV", "Luxury", "Economy", "Sport"};
+            String[] brands = {"Toyota", "Honda", "BMW", "Rolls-Royce", "Mercedes-Benz", "Nissan", "Mitsubishi", "Daihatsu"};
+            String[] models = {"Avanza", "Innova", "Fortuner", "Rush", "Veloz", "Raize", "Phantom", "Ghost", "Maybach", "C-Class", "E-Class", "GLC", "A4", "A6", "Q5", "Civic", "Accord", "CR-V", "Pajero", "Outlander"};
+            String[] transmissions = {"Manual", "Automatic"};
+            String[] fuelTypes = {"Petrol", "Diesel", "Hybrid", "Electric"};
+            String[] statuses = {"Available", "Unavailable"};
+
+            int vehicleCount = 10;
+            for (int i = 0; i < vehicleCount; i++) {
+                Vehicle vehicle = new Vehicle();
+                vehicle.setId("VH" + String.format("%04d", i + 1));
+                vehicle.setType(vehicleTypes[faker.random().nextInt(vehicleTypes.length)]);
+                vehicle.setBrand(brands[faker.random().nextInt(brands.length)]);
+                vehicle.setModel(models[faker.random().nextInt(models.length)]);
+                vehicle.setYear(faker.random().nextInt(2024 - 2015) + 2015);
+                vehicle.setLocation(faker.address().city());
+                vehicle.setLicensePlate(faker.bothify("?? #### ??"));
+                vehicle.setCapacity(faker.random().nextInt(7) + 1);
+                vehicle.setTransmission(transmissions[faker.random().nextInt(transmissions.length)]);
+                vehicle.setFuelType(fuelTypes[faker.random().nextInt(fuelTypes.length)]);
+                vehicle.setPrice((double) (faker.random().nextInt(2000) + 500) * 1000);
+                vehicle.setStatus(statuses[faker.random().nextInt(statuses.length)]);
+                vehicle.setRentalVendor(vendors.get(faker.random().nextInt(vendors.size())));
+                
+                vehicleRepository.save(vehicle);
+            }
+            System.out.println("✅ Dummy vehicles generation complete.");
             
             System.out.println("All dummy data generation complete.");
         };

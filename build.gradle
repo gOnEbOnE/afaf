@@ -25,20 +25,41 @@ repositories {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
-	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	compileOnly 'org.projectlombok:lombok'
-	developmentOnly 'org.springframework.boot:spring-boot-devtools'
-	runtimeOnly 'com.h2database:h2'
-	runtimeOnly 'org.postgresql:postgresql'
-	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	implementation('com.github.javafaker:javafaker:1.0.2') {
-		exclude group: 'org.yaml', module: 'snakeyaml'
-	}
+    implementation 'jakarta.validation:jakarta.validation-api'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.hibernate.validator:hibernate-validator'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // // Security & Thymeleaf extras
+    // implementation 'org.springframework.boot:spring-boot-starter-security'
+    // implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+
+    // // JWT (api + impl + jackson)
+    // implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    // runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    // runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+    // // JAXB (Jakarta) - needed for some XML binding on newer JDKs
+    // implementation 'jakarta.xml.bind:jakarta.xml.bind-api:4.0.2'
+    // implementation 'org.glassfish.jaxb:jaxb-runtime:4.0.5'
+
+    implementation('com.github.javafaker:javafaker:1.0.2') {
+        exclude group: 'org.yaml', module: 'snakeyaml'
+    }
+    // implementation 'jakarta.validation:jakarta.validation-api'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    compileOnly 'org.projectlombok:lombok'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'org.postgresql:postgresql'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.hamcrest:hamcrest:2.2'
 }
 
 tasks.named('test') {

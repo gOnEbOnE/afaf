@@ -1,10 +1,16 @@
 package apap.ti._5.vehicle_rental_2306245592_be.controller;
 
 import apap.ti._5.vehicle_rental_2306245592_be.model.Vehicle;
+import apap.ti._5.vehicle_rental_2306245592_be.model.RentalVendor;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.BaseResponseDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.vehicle.CreateVehicleRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.vehicle.VehicleResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.service.VehicleService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
@@ -59,9 +65,45 @@ public class VehicleController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @PostMapping("/create")
+    public ResponseEntity<BaseResponseDTO<VehicleResponseDTO>> createVehicle(
+            @Valid @RequestBody CreateVehicleRequestDTO createVehicleRequestDTO,
+            BindingResult bindingResult) {
+
+        var baseResponseDTO = new BaseResponseDTO<VehicleResponseDTO>();
+
+        if (bindingResult.hasFieldErrors()) {
+            StringBuilder errorMessages = new StringBuilder();
+            List<FieldError> errors = bindingResult.getFieldErrors();
+            for (FieldError error : errors) {
+                errorMessages.append(error.getDefaultMessage()).append("; ");
+            }
+
+            baseResponseDTO.setStatus(HttpStatus.BAD_REQUEST.value());
+            baseResponseDTO.setMessage(errorMessages.toString());
+            baseResponseDTO.setTimestamp(new Date());
+            return new ResponseEntity<>(baseResponseDTO, HttpStatus.BAD_REQUEST);
+        }
+
+        try {
+            VehicleResponseDTO vehicleResponseDTO = vehicleService.createVehicleFromDTO(createVehicleRequestDTO);
+
+            baseResponseDTO.setStatus(HttpStatus.CREATED.value());
+            baseResponseDTO.setData(vehicleResponseDTO);
+            baseResponseDTO.setMessage("Vehicle created successfully");
+            baseResponseDTO.setTimestamp(new Date());
+            return new ResponseEntity<>(baseResponseDTO, HttpStatus.CREATED);
+        } catch (RuntimeException ex) {
+            baseResponseDTO.setStatus(HttpStatus.BAD_REQUEST.value());
+            baseResponseDTO.setMessage("Failed to create vehicle: " + ex.getMessage());
+            baseResponseDTO.setTimestamp(new Date());
+            return new ResponseEntity<>(baseResponseDTO, HttpStatus.BAD_REQUEST);
+        }
+    }
+
     @GetMapping("/count")
     public ResponseEntity<BaseResponseDTO<Integer>> getVehicleCount() {
-        int count = vehicleService.getAllVehicles().size();
+        int count = vehicleService.getVehicleCount();
         
         BaseResponseDTO<Integer> response = new BaseResponseDTO<>(
             200, "Vehicles retrieved successfully", new Date(), count
@@ -77,15 +119,6 @@ public class VehicleController {
             200, "Vendors retrieved successfully", new Date(), count
         );
         return ResponseEntity.ok(response);
-    }
-
-    @PostMapping
-    public ResponseEntity<BaseResponseDTO<Vehicle>> createVehicle(@RequestBody Vehicle vehicle) {
-        Vehicle createdVehicle = vehicleService.createVehicle(vehicle);
-        BaseResponseDTO<Vehicle> response = new BaseResponseDTO<>(
-            201, "Vehicle created successfully", new Date(), createdVehicle
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{id}")
@@ -120,5 +153,15 @@ public class VehicleController {
             );
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
+    }
+
+    @GetMapping("/vendors")
+    public ResponseEntity<BaseResponseDTO<List<RentalVendor>>> getAllVendors() {
+        List<RentalVendor> vendors = vehicleService.getAllVendors();
+        
+        BaseResponseDTO<List<RentalVendor>> response = new BaseResponseDTO<>(
+            200, "Vendors retrieved successfully", new Date(), vendors
+        );
+        return ResponseEntity.ok(response);
     }
 }

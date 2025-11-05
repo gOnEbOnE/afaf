@@ -1,5 +1,6 @@
 package apap.ti._5.vehicle_rental_2306245592_be.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -37,6 +38,10 @@ public class RentalVendor {
     @Column(name = "location")
     private List<String> listOfLocations;
     
+    @OneToMany(mappedBy = "rentalVendor", fetch = FetchType.LAZY)
+    @JsonManagedReference
+    private List<Vehicle> listOfVehicles;
+    
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -44,7 +49,4 @@ public class RentalVendor {
     @UpdateTimestamp
     @Column(nullable = false)
     private LocalDateTime updatedAt;
-    
-    @OneToMany(mappedBy = "rentalVendor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Vehicle> listOfVehicles;
 }

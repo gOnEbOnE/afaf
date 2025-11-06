@@ -2,6 +2,8 @@ package apap.ti._5.vehicle_rental_2306245592_be.controller;
 
 import apap.ti._5.vehicle_rental_2306245592_be.model.RentalBooking;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.BaseResponseDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.RentalBookingResponseDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.RentalAddOn.RentalAddOnResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.service.BookingService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -21,8 +24,40 @@ public class BookingController {
         this.bookingService = bookingService;
     }
 
+    private RentalBookingResponseDTO convertToDTO(RentalBooking booking) {
+        List<RentalAddOnResponseDTO> addOnDTOs = booking.getListOfAddOns() != null ?
+            booking.getListOfAddOns().stream()
+                .map(addOn -> new RentalAddOnResponseDTO(
+                    addOn.getId(),
+                    addOn.getName(),
+                    addOn.getPrice(),
+                    addOn.getCreatedAt(),
+                    addOn.getUpdatedAt()
+                ))
+                .collect(Collectors.toList()) : null;
+
+        return new RentalBookingResponseDTO(
+            booking.getId(),
+            booking.getVehicle().getId(),
+            booking.getVehicle().getBrand(),
+            booking.getVehicle().getModel(),
+            booking.getPickUpTime(),
+            booking.getDropOffTime(),
+            booking.getPickUpLocation(),
+            booking.getDropOffLocation(),
+            booking.getCapacityNeeded(),
+            booking.getTransmissionNeeded(),
+            booking.getTotalPrice(),
+            booking.getIncludeDriver(),
+            booking.getStatus(),
+            addOnDTOs,
+            booking.getCreatedAt(),
+            booking.getUpdatedAt()
+        );
+    }
+
     @GetMapping
-    public ResponseEntity<BaseResponseDTO<List<RentalBooking>>> getAllBookings(
+    public ResponseEntity<BaseResponseDTO<List<RentalBookingResponseDTO>>> getAllBookings(
             @RequestParam(required = false) String status) {
         
         List<RentalBooking> bookings;
@@ -33,10 +68,14 @@ public class BookingController {
             bookings = bookingService.getAllBookings();
         }
         
-        BaseResponseDTO<List<RentalBooking>> response = new BaseResponseDTO<>(
-            200, "Bookings retrieved successfully (Total: " + bookings.size() + ")", new Date(), bookings
+        List<RentalBookingResponseDTO> response = bookings.stream()
+            .map(this::convertToDTO)
+            .collect(Collectors.toList());
+        
+        BaseResponseDTO<List<RentalBookingResponseDTO>> apiResponse = new BaseResponseDTO<>(
+            200, "Bookings retrieved successfully (Total: " + bookings.size() + ")", new Date(), response
         );
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(apiResponse);
     }
 
     @GetMapping("/count")
@@ -50,43 +89,46 @@ public class BookingController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BaseResponseDTO<RentalBooking>> getBookingById(@PathVariable String id) {
+    public ResponseEntity<BaseResponseDTO<RentalBookingResponseDTO>> getBookingById(@PathVariable String id) {
         Optional<RentalBooking> booking = bookingService.getBookingById(id);
         
         if (booking.isPresent()) {
-            BaseResponseDTO<RentalBooking> response = new BaseResponseDTO<>(
-                200, "Success", new Date(), booking.get()
+            RentalBookingResponseDTO dto = convertToDTO(booking.get());
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                200, "Success", new Date(), dto
             );
             return ResponseEntity.ok(response);
         }
         
-        BaseResponseDTO<RentalBooking> response = new BaseResponseDTO<>(
+        BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
             404, "Booking not found", new Date(), null
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
     @PostMapping
-    public ResponseEntity<BaseResponseDTO<RentalBooking>> createBooking(@RequestBody RentalBooking booking) {
+    public ResponseEntity<BaseResponseDTO<RentalBookingResponseDTO>> createBooking(@RequestBody RentalBooking booking) {
         RentalBooking createdBooking = bookingService.createBooking(booking);
-        BaseResponseDTO<RentalBooking> response = new BaseResponseDTO<>(
-            201, "Booking created successfully", new Date(), createdBooking
+        RentalBookingResponseDTO dto = convertToDTO(createdBooking);
+        BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+            201, "Booking created successfully", new Date(), dto
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<BaseResponseDTO<RentalBooking>> updateBooking(
+    public ResponseEntity<BaseResponseDTO<RentalBookingResponseDTO>> updateBooking(
             @PathVariable String id, 
             @RequestBody RentalBooking booking) {
         try {
             RentalBooking updatedBooking = bookingService.updateBooking(id, booking);
-            BaseResponseDTO<RentalBooking> response = new BaseResponseDTO<>(
-                200, "Booking updated successfully", new Date(), updatedBooking
+            RentalBookingResponseDTO dto = convertToDTO(updatedBooking);
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                200, "Booking updated successfully", new Date(), dto
             );
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
-            BaseResponseDTO<RentalBooking> response = new BaseResponseDTO<>(
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
                 404, e.getMessage(), new Date(), null
             );
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -108,4 +150,4 @@ public class BookingController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
-}   
+}

@@ -1,6 +1,7 @@
 package apap.ti._5.vehicle_rental_2306245592_be.service;
 
 import apap.ti._5.vehicle_rental_2306245592_be.model.RentalBooking;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -11,4 +12,6 @@ public interface BookingService {
     RentalBooking updateBooking(String id, RentalBooking booking);
     void deleteBooking(String id);
     List<RentalBooking> getBookingsByStatus(String status);
+    List<RentalBooking> getBookingsByVehicleId(String vehicleId);
+    int getBookingCount();
 }

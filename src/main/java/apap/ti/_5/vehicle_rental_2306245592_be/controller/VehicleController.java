@@ -6,6 +6,7 @@ import apap.ti._5.vehicle_rental_2306245592_be.restdto.BaseResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.vehicle.CreateVehicleRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.vehicle.UpdateVehicleRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.vehicle.VehicleResponseDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.vendor.RentalVendorResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.service.VehicleService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -208,11 +209,15 @@ public class VehicleController {
     }
 
     @GetMapping("/vendors")
-    public ResponseEntity<BaseResponseDTO<List<RentalVendor>>> getAllVendors() {
+    public ResponseEntity<BaseResponseDTO<List<RentalVendorResponseDTO>>> getAllVendors() {
         List<RentalVendor> vendors = vehicleService.getAllVendors();
         
-        BaseResponseDTO<List<RentalVendor>> response = new BaseResponseDTO<>(
-            200, "Vendors retrieved successfully", new Date(), vendors
+        List<RentalVendorResponseDTO> vendorDTOs = vendors.stream()
+                .map(this::mapToRentalVendorResponseDTO)
+                .toList();
+        
+        BaseResponseDTO<List<RentalVendorResponseDTO>> response = new BaseResponseDTO<>(
+            200, "Vendors retrieved successfully", new Date(), vendorDTOs
         );
         return ResponseEntity.ok(response);
     }
@@ -244,6 +249,22 @@ public class VehicleController {
                 .status(vehicle.getStatus())
                 .createdAt(vehicle.getCreatedAt())
                 .updatedAt(vehicle.getUpdatedAt())
+                .build();
+    }
+
+    private RentalVendorResponseDTO mapToRentalVendorResponseDTO(RentalVendor vendor) {
+        if (vendor == null) {
+            return null;
+        }
+
+        return RentalVendorResponseDTO.builder()
+                .id(vendor.getId())
+                .name(vendor.getName())
+                .email(vendor.getEmail())
+                .phone(vendor.getPhone())
+                .listOfLocations(vendor.getListOfLocations())
+                .createdAt(vendor.getCreatedAt())
+                .updatedAt(vendor.getUpdatedAt())
                 .build();
     }
 }

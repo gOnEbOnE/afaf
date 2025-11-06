@@ -56,4 +56,14 @@ public class BookingServiceImpl implements BookingService {
     public List<RentalBooking> getBookingsByStatus(String status) {
         return rentalBookingRepository.findByStatus(status);
     }
+
+    @Override
+    public List<RentalBooking> getBookingsByVehicleId(String vehicleId) {
+        return rentalBookingRepository.findByVehicleId(vehicleId);
+    }
+
+    @Override
+    public int getBookingCount() {
+        return (int) rentalBookingRepository.count();
+    }
 }

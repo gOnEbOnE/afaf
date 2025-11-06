@@ -23,8 +23,9 @@ public class RentalBooking {
     @Column(nullable = false, unique = true)
     private String id;
     
-    @Column(nullable = false)
-    private String vehicleId;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "vehicle_id", nullable = false)
+    private Vehicle vehicle;
     
     @Column(nullable = false)
     private LocalDateTime pickUpTime;

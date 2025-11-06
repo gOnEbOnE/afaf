@@ -7,27 +7,27 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.Where;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Table(name = "vehicle")
+@Where(clause = "deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@SoftDelete // ✅ Hibernate 6.2+ soft delete
 public class Vehicle {
     
     @Id
     @Column(nullable = false, unique = true)
     private String id;
     
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "rental_vendor_id", nullable = false)
-    @JsonBackReference
     private RentalVendor rentalVendor;
     
     @Column(nullable = false)
@@ -63,6 +63,10 @@ public class Vehicle {
     @Column(nullable = false)
     private String status;
     
+    @OneToMany(mappedBy = "vehicle", fetch = FetchType.LAZY)
+    @JsonBackReference
+    private List<RentalBooking> listOfBookings;
+    
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -71,7 +75,6 @@ public class Vehicle {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
     
-    // ✅ Soft delete column (Hibernate akan mengelola otomatis)
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 }

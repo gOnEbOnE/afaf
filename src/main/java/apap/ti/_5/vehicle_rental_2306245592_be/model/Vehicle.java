@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SoftDelete;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@SoftDelete // ✅ Hibernate 6.2+ soft delete
 public class Vehicle {
     
     @Id
@@ -68,4 +70,8 @@ public class Vehicle {
     @UpdateTimestamp
     @Column(nullable = false)
     private LocalDateTime updatedAt;
+    
+    // ✅ Soft delete column (Hibernate akan mengelola otomatis)
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }

@@ -10,6 +10,7 @@ import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.vehicle.VehicleR
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.List;
 import java.util.Optional;
@@ -48,33 +49,27 @@ public class VehicleServiceImpl implements VehicleService {
 
     @Override
     public VehicleResponseDTO createVehicleFromDTO(CreateVehicleRequestDTO createVehicleRequestDTO) {
-        // Validasi tahun keluaran
         int currentYear = Year.now().getValue();
         if (createVehicleRequestDTO.getYear() > currentYear) {
             throw new RuntimeException("Vehicle year cannot be greater than current year");
         }
 
-        // Validasi nomor plat unik
         if (isLicensePlateTaken(createVehicleRequestDTO.getLicensePlate())) {
             throw new RuntimeException("License plate already exists: " + createVehicleRequestDTO.getLicensePlate());
         }
 
-        // Cari vendor
         Optional<RentalVendor> vendor = rentalVendorRepository.findById(createVehicleRequestDTO.getRentalVendorId());
         if (vendor.isEmpty()) {
             throw new RuntimeException("Rental Vendor not found with id: " + createVehicleRequestDTO.getRentalVendorId());
         }
 
-        // Validasi lokasi ada dalam listOfLocations vendor
         RentalVendor rentalVendor = vendor.get();
         if (!rentalVendor.getListOfLocations().contains(createVehicleRequestDTO.getLocation())) {
             throw new RuntimeException("Vendor does not operate in location: " + createVehicleRequestDTO.getLocation());
         }
 
-        // Generate ID kendaraan
         String vehicleId = generateVehicleId();
 
-        // Buat vehicle baru
         Vehicle vehicle = new Vehicle();
         vehicle.setId(vehicleId);
         vehicle.setRentalVendor(rentalVendor);
@@ -88,7 +83,7 @@ public class VehicleServiceImpl implements VehicleService {
         vehicle.setTransmission(createVehicleRequestDTO.getTransmission());
         vehicle.setFuelType(createVehicleRequestDTO.getFuelType());
         vehicle.setPrice(createVehicleRequestDTO.getPrice());
-        vehicle.setStatus("Available"); // Set status default
+        vehicle.setStatus("Available");
 
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
         return mapToVehicleResponseDTO(savedVehicle);
@@ -96,36 +91,30 @@ public class VehicleServiceImpl implements VehicleService {
 
     @Override
     public VehicleResponseDTO updateVehicleFromDTO(UpdateVehicleRequestDTO updateVehicleRequestDTO) {
-        // Validasi vehicle exists
         Optional<Vehicle> existingVehicle = vehicleRepository.findById(updateVehicleRequestDTO.getId());
         if (existingVehicle.isEmpty()) {
             throw new RuntimeException("Vehicle not found with id: " + updateVehicleRequestDTO.getId());
         }
 
-        // Validasi tahun keluaran
         int currentYear = Year.now().getValue();
         if (updateVehicleRequestDTO.getYear() > currentYear) {
             throw new RuntimeException("Vehicle year cannot be greater than current year");
         }
 
-        // Validasi nomor plat unik (exclude current vehicle ID)
         if (isLicensePlateTakenExcludeId(updateVehicleRequestDTO.getLicensePlate(), updateVehicleRequestDTO.getId())) {
             throw new RuntimeException("License plate already exists: " + updateVehicleRequestDTO.getLicensePlate());
         }
 
-        // Cari vendor
         Optional<RentalVendor> vendor = rentalVendorRepository.findById(updateVehicleRequestDTO.getRentalVendorId());
         if (vendor.isEmpty()) {
             throw new RuntimeException("Rental Vendor not found with id: " + updateVehicleRequestDTO.getRentalVendorId());
         }
 
-        // Validasi lokasi ada dalam listOfLocations vendor
         RentalVendor rentalVendor = vendor.get();
         if (!rentalVendor.getListOfLocations().contains(updateVehicleRequestDTO.getLocation())) {
             throw new RuntimeException("Vendor does not operate in location: " + updateVehicleRequestDTO.getLocation());
         }
 
-        // Update vehicle
         Vehicle vehicle = existingVehicle.get();
         vehicle.setRentalVendor(rentalVendor);
         vehicle.setType(updateVehicleRequestDTO.getType());
@@ -156,10 +145,41 @@ public class VehicleServiceImpl implements VehicleService {
 
     @Override
     public void deleteVehicle(String id) {
+        // ✅ Soft delete - Hibernate @SoftDelete akan mengelola deletedAt
+        if (vehicleRepository.existsById(id)) {
+            Optional<Vehicle> vehicle = vehicleRepository.findById(id);
+            if (vehicle.isPresent()) {
+                Vehicle v = vehicle.get();
+                v.setStatus("Unavailable");
+                v.setDeletedAt(LocalDateTime.now());
+                vehicleRepository.save(v);
+            }
+        } else {
+            throw new RuntimeException("Vehicle not found with id: " + id);
+        }
+    }
+
+    @Override
+    public void permanentlyDeleteVehicle(String id) {
+        // ✅ Hard delete - gunakan untuk admin saja
         if (vehicleRepository.existsById(id)) {
             vehicleRepository.deleteById(id);
         } else {
             throw new RuntimeException("Vehicle not found with id: " + id);
+        }
+    }
+
+    @Override
+    public void restoreVehicle(String id) {
+        // ✅ Restore soft deleted vehicle
+        Optional<Vehicle> deletedVehicle = vehicleRepository.findDeletedVehicleById(id);
+        if (deletedVehicle.isPresent()) {
+            Vehicle v = deletedVehicle.get();
+            v.setStatus("Available");
+            v.setDeletedAt(null);
+            vehicleRepository.save(v);
+        } else {
+            throw new RuntimeException("Deleted vehicle not found with id: " + id);
         }
     }
 
@@ -189,7 +209,6 @@ public class VehicleServiceImpl implements VehicleService {
         if (vehicle.isEmpty()) {
             return false;
         }
-        // Jika license plate ada, cek apakah ID-nya berbeda
         return !vehicle.get().getId().equals(vehicleId);
     }
 

@@ -17,6 +17,8 @@ public interface VehicleService {
     VehicleResponseDTO updateVehicleFromDTO(UpdateVehicleRequestDTO updateVehicleRequestDTO);
     Vehicle updateVehicle(String id, Vehicle vehicle);
     void deleteVehicle(String id);
+    void permanentlyDeleteVehicle(String id); // ✅ Hard delete
+    void restoreVehicle(String id); // ✅ Restore soft deleted
     List<Vehicle> searchVehicles(String keyword);
     List<Vehicle> filterVehiclesByType(String type);
     List<RentalVendor> getAllVendors();

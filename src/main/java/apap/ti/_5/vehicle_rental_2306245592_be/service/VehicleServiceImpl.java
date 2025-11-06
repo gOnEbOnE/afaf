@@ -5,6 +5,7 @@ import apap.ti._5.vehicle_rental_2306245592_be.model.Vehicle;
 import apap.ti._5.vehicle_rental_2306245592_be.repository.RentalVendorRepository;
 import apap.ti._5.vehicle_rental_2306245592_be.repository.VehicleRepository;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.vehicle.CreateVehicleRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.vehicle.UpdateVehicleRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.vehicle.VehicleResponseDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,6 +95,56 @@ public class VehicleServiceImpl implements VehicleService {
     }
 
     @Override
+    public VehicleResponseDTO updateVehicleFromDTO(UpdateVehicleRequestDTO updateVehicleRequestDTO) {
+        // Validasi vehicle exists
+        Optional<Vehicle> existingVehicle = vehicleRepository.findById(updateVehicleRequestDTO.getId());
+        if (existingVehicle.isEmpty()) {
+            throw new RuntimeException("Vehicle not found with id: " + updateVehicleRequestDTO.getId());
+        }
+
+        // Validasi tahun keluaran
+        int currentYear = Year.now().getValue();
+        if (updateVehicleRequestDTO.getYear() > currentYear) {
+            throw new RuntimeException("Vehicle year cannot be greater than current year");
+        }
+
+        // Validasi nomor plat unik (exclude current vehicle ID)
+        if (isLicensePlateTakenExcludeId(updateVehicleRequestDTO.getLicensePlate(), updateVehicleRequestDTO.getId())) {
+            throw new RuntimeException("License plate already exists: " + updateVehicleRequestDTO.getLicensePlate());
+        }
+
+        // Cari vendor
+        Optional<RentalVendor> vendor = rentalVendorRepository.findById(updateVehicleRequestDTO.getRentalVendorId());
+        if (vendor.isEmpty()) {
+            throw new RuntimeException("Rental Vendor not found with id: " + updateVehicleRequestDTO.getRentalVendorId());
+        }
+
+        // Validasi lokasi ada dalam listOfLocations vendor
+        RentalVendor rentalVendor = vendor.get();
+        if (!rentalVendor.getListOfLocations().contains(updateVehicleRequestDTO.getLocation())) {
+            throw new RuntimeException("Vendor does not operate in location: " + updateVehicleRequestDTO.getLocation());
+        }
+
+        // Update vehicle
+        Vehicle vehicle = existingVehicle.get();
+        vehicle.setRentalVendor(rentalVendor);
+        vehicle.setType(updateVehicleRequestDTO.getType());
+        vehicle.setBrand(updateVehicleRequestDTO.getBrand());
+        vehicle.setModel(updateVehicleRequestDTO.getModel());
+        vehicle.setYear(updateVehicleRequestDTO.getYear());
+        vehicle.setLocation(updateVehicleRequestDTO.getLocation());
+        vehicle.setLicensePlate(updateVehicleRequestDTO.getLicensePlate());
+        vehicle.setCapacity(updateVehicleRequestDTO.getCapacity());
+        vehicle.setTransmission(updateVehicleRequestDTO.getTransmission());
+        vehicle.setFuelType(updateVehicleRequestDTO.getFuelType());
+        vehicle.setPrice(updateVehicleRequestDTO.getPrice());
+        vehicle.setStatus(updateVehicleRequestDTO.getStatus());
+
+        Vehicle updatedVehicle = vehicleRepository.save(vehicle);
+        return mapToVehicleResponseDTO(updatedVehicle);
+    }
+
+    @Override
     public Vehicle updateVehicle(String id, Vehicle vehicle) {
         Optional<Vehicle> existingVehicle = vehicleRepository.findById(id);
         if (existingVehicle.isPresent()) {
@@ -130,6 +181,16 @@ public class VehicleServiceImpl implements VehicleService {
     @Override
     public boolean isLicensePlateTaken(String licensePlate) {
         return vehicleRepository.findByLicensePlate(licensePlate).isPresent();
+    }
+
+    @Override
+    public boolean isLicensePlateTakenExcludeId(String licensePlate, String vehicleId) {
+        Optional<Vehicle> vehicle = vehicleRepository.findByLicensePlate(licensePlate);
+        if (vehicle.isEmpty()) {
+            return false;
+        }
+        // Jika license plate ada, cek apakah ID-nya berbeda
+        return !vehicle.get().getId().equals(vehicleId);
     }
 
     @Override

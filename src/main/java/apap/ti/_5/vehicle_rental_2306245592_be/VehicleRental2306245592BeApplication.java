@@ -85,7 +85,7 @@ public class VehicleRental2306245592BeApplication {
             String[] fuelTypes = {"Petrol", "Diesel", "Hybrid", "Electric"};
             String[] statuses = {"Available", "Unavailable"};
 
-            int vehicleCount = 10;
+            int vehicleCount = 5;
             for (int i = 0; i < vehicleCount; i++) {
                 Vehicle vehicle = new Vehicle();
                 vehicle.setId("VH" + String.format("%04d", i + 1));

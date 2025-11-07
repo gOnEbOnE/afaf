@@ -9,12 +9,17 @@ import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.FinalizBo
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingStatusDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateAddOnsRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.BookingChartDataDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.BookingChartResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.RentalBookingResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.SearchVehiclesResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.RentalAddOn.RentalAddOnResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.service.BookingService;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
@@ -22,9 +27,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@RestController
+@RestController  // ✅ IMPORTANT: Use @RestController, not @Controller
 @RequestMapping("/api/bookings")
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:8080"})
 public class BookingController {
 
     private final BookingService bookingService;
@@ -537,6 +542,54 @@ public class BookingController {
                 500, "Terjadi kesalahan pada server", new Date(), null
             );
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @GetMapping("/chart")  // ✅ Change from "/api/chart" to just "/chart"
+    @CrossOrigin(origins = "http://localhost:5173")
+    public ResponseEntity<?> getBookingChart(
+            @RequestParam(value = "period", defaultValue = "Monthly") String period,
+            @RequestParam(value = "year", defaultValue = "2025") int year) {
+        
+        System.out.println("════════════════════════════════════════════════════");
+        System.out.println("📊 [CONTROLLER] GET /api/bookings/chart");
+        System.out.println("   Period: " + period);
+        System.out.println("   Year: " + year);
+        System.out.println("   Timestamp: " + new java.util.Date());
+        
+        try {
+            BookingChartDataDTO chartData = bookingService.getBookingChartData(period, year);
+            
+            System.out.println("✅ Chart data retrieved");
+            System.out.println("   Period: " + chartData.getPeriod());
+            System.out.println("   Year: " + chartData.getYear());
+            System.out.println("   Data points: " + chartData.getData().size());
+            
+            BookingChartResponseDTO response = BookingChartResponseDTO.builder()
+                .status(200)
+                .message("Chart data retrieved successfully")
+                .timestamp(new java.util.Date().toString())
+                .data(chartData)
+                .build();
+            
+            System.out.println("📤 Response sent successfully");
+            System.out.println("════════════════════════════════════════════════════");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            System.err.println("❌ Error: " + e.getMessage());
+            e.printStackTrace();
+            
+            BookingChartResponseDTO errorResponse = BookingChartResponseDTO.builder()
+                .status(400)
+                .message(e.getMessage())
+                .timestamp(new java.util.Date().toString())
+                .build();
+            
+            System.err.println("════════════════════════════════════════════════════");
+            
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 }

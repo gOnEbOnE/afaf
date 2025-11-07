@@ -7,6 +7,7 @@ import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateAdd
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingStatusDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.AddAddOnsRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.BookingChartDataDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.SearchVehiclesResponseDTO;
 
 import java.util.List;
@@ -52,4 +53,7 @@ public interface BookingService {
     
     // ✅ NEW: Cancel/Delete booking (soft delete)
     RentalBooking cancelBooking(String id);
+    
+    // Add new method to interface
+    BookingChartDataDTO getBookingChartData(String period, int year);
 }

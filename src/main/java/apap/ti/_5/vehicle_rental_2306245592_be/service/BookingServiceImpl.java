@@ -8,6 +8,7 @@ import apap.ti._5.vehicle_rental_2306245592_be.repository.RentalBookingRepositor
 import apap.ti._5.vehicle_rental_2306245592_be.repository.VehicleRepository;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.AddAddOnsRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.CreateBookingRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.AvailableVehicleResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.SearchVehiclesResponseDTO;
 import org.springframework.stereotype.Service;
@@ -277,6 +278,102 @@ public class BookingServiceImpl implements BookingService {
     public List<String> getAllProvinces() {
         locationService.initializeProvinces();
         return locationService.getProvinceList();
+    }
+
+    @Override
+    public Optional<RentalBooking> getBookingForUpdate(String id) {
+        System.out.println("🔍 [SERVICE] Getting booking for update: " + id);
+        
+        Optional<RentalBooking> booking = rentalBookingRepository.findById(id);
+        
+        if (booking.isPresent()) {
+            // Check if booking is in "Upcoming" status only
+            if (!"Upcoming".equals(booking.get().getStatus())) {
+                System.out.println("❌ Booking status is: " + booking.get().getStatus());
+                throw new RuntimeException("Hanya booking dengan status 'Upcoming' yang dapat diubah");
+            }
+            System.out.println("✅ Booking found and is Upcoming");
+            return booking;
+        }
+        
+        System.out.println("❌ Booking not found with ID: " + id);
+        throw new RuntimeException("Booking tidak ditemukan dengan ID: " + id);
+    }
+
+    @Override
+    public RentalBooking updateBookingDetails(String id, UpdateBookingRequestDTO updateDTO) {
+        System.out.println("📝 Updating booking: " + id);
+        
+        // Validate pickup time is in future
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
+        if (updateDTO.getPickUpTime().isBefore(now.minusMinutes(5))) {
+            throw new RuntimeException("Waktu pengambilan tidak boleh di masa lalu");
+        }
+        
+        // Validate time range
+        if (updateDTO.getPickUpTime().isAfter(updateDTO.getDropOffTime())) {
+            throw new RuntimeException("Waktu pengambilan harus sebelum waktu pengembalian");
+        }
+        
+        // Get existing booking
+        RentalBooking booking = rentalBookingRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Booking tidak ditemukan"));
+        
+        // Check if booking is Upcoming
+        if (!"Upcoming".equals(booking.getStatus())) {
+            throw new RuntimeException("Hanya booking dengan status 'Upcoming' yang dapat diubah");
+        }
+        
+        // Validate vendor has both locations
+        if (booking.getVehicle().getRentalVendor().getListOfLocations() == null) {
+            throw new RuntimeException("Vendor tidak memiliki lokasi yang tersedia");
+        }
+        
+        boolean hasPickUp = booking.getVehicle().getRentalVendor().getListOfLocations()
+            .contains(updateDTO.getPickUpLocation());
+        boolean hasDropOff = booking.getVehicle().getRentalVendor().getListOfLocations()
+            .contains(updateDTO.getDropOffLocation());
+        
+        if (!hasPickUp || !hasDropOff) {
+            throw new RuntimeException("Vendor tidak beroperasi di salah satu atau kedua lokasi yang dipilih");
+        }
+        
+        // Calculate new rental days and price
+        long hours = ChronoUnit.HOURS.between(updateDTO.getPickUpTime(), updateDTO.getDropOffTime());
+        int rentalDays = (int) Math.ceil((double) hours / 24);
+        if (rentalDays == 0) rentalDays = 1;
+        
+        // Calculate new total price (vehicle + driver + existing add-ons)
+        double basePrice = rentalDays * booking.getVehicle().getPrice();
+        double driverCost = updateDTO.getIncludeDriver() ? rentalDays * DRIVER_COST_PER_DAY : 0;
+        
+        // Keep existing add-ons cost
+        double addOnsCost = booking.getListOfAddOns() != null 
+            ? booking.getListOfAddOns().stream().mapToDouble(RentalAddOn::getPrice).sum()
+            : 0;
+        
+        double totalPrice = basePrice + driverCost + addOnsCost;
+        
+        System.out.println("💰 New price calculation:");
+        System.out.println("   Base: " + basePrice + ", Driver: " + driverCost + ", Add-ons: " + addOnsCost + ", Total: " + totalPrice);
+        
+        // Update booking
+        booking.setPickUpLocation(updateDTO.getPickUpLocation());
+        booking.setDropOffLocation(updateDTO.getDropOffLocation());
+        booking.setPickUpTime(updateDTO.getPickUpTime());
+        booking.setDropOffTime(updateDTO.getDropOffTime());
+        booking.setCapacityNeeded(updateDTO.getCapacityNeeded());
+        booking.setTransmissionNeeded(updateDTO.getTransmissionNeeded());
+        booking.setIncludeDriver(updateDTO.getIncludeDriver());
+        booking.setTotalPrice(totalPrice);
+        
+        // Update status based on new pickup time
+        booking.setStatus(determineBookingStatus(updateDTO.getPickUpTime()));
+        
+        RentalBooking updatedBooking = rentalBookingRepository.save(booking);
+        System.out.println("✅ Booking updated successfully: " + updatedBooking.getId());
+        
+        return updatedBooking;
     }
 
     private String determineBookingStatus(LocalDateTime pickUpTime) {

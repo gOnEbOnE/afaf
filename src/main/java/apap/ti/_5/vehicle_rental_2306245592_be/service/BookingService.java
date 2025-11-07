@@ -3,6 +3,7 @@ package apap.ti._5.vehicle_rental_2306245592_be.service;
 import apap.ti._5.vehicle_rental_2306245592_be.model.RentalAddOn;
 import apap.ti._5.vehicle_rental_2306245592_be.model.RentalBooking;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.CreateBookingRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.AddAddOnsRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.SearchVehiclesResponseDTO;
 
@@ -25,4 +26,10 @@ public interface BookingService {
     String generateBookingId();
     List<RentalAddOn> getAllAddOns();
     List<String> getAllProvinces();
+    
+    // ✅ NEW: Get booking details for update form
+    Optional<RentalBooking> getBookingForUpdate(String id);
+    
+    // ✅ NEW: Update booking details
+    RentalBooking updateBookingDetails(String id, UpdateBookingRequestDTO updateDTO);
 }

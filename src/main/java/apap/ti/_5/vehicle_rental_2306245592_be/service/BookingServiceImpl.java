@@ -10,6 +10,7 @@ import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.AddAddOns
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.CreateBookingRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingStatusDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateAddOnsRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.AvailableVehicleResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.SearchVehiclesResponseDTO;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -564,6 +566,111 @@ public class BookingServiceImpl implements BookingService {
             System.out.println("✅ Booking saved successfully");
             System.out.println("   Final status: " + updatedBooking.getStatus());
             System.out.println("   Final price: Rp " + String.format("%.0f", updatedBooking.getTotalPrice()));
+            
+            return updatedBooking;
+            
+        } catch (Exception e) {
+            System.err.println("❌ [SERVICE] Error: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
+        } finally {
+            System.out.println("════════════════════════════════════════════════════");
+        }
+    }
+
+    @Override
+    public Optional<RentalBooking> getBookingForUpdateAddOns(String id) {
+        System.out.println("════════════════════════════════════════════════════");
+        System.out.println("🔍 [SERVICE] getBookingForUpdateAddOns called");
+        System.out.println("   Booking ID: " + id);
+        
+        try {
+            Optional<RentalBooking> booking = rentalBookingRepository.findById(id);
+            
+            if (booking.isPresent()) {
+                System.out.println("✅ Booking found");
+                System.out.println("   Status: " + booking.get().getStatus());
+                System.out.println("   Current add-ons: " + (booking.get().getListOfAddOns() != null 
+                    ? booking.get().getListOfAddOns().size() : 0));
+                
+                // Check if booking is in "Upcoming" status only
+                if (!"Upcoming".equals(booking.get().getStatus())) {
+                    System.out.println("❌ Booking status is: " + booking.get().getStatus());
+                    throw new RuntimeException("Hanya booking dengan status 'Upcoming' yang dapat diubah");
+                }
+                
+                return booking;
+            }
+            
+            System.out.println("❌ Booking NOT found in database");
+            throw new RuntimeException("Booking tidak ditemukan dengan ID: " + id);
+        } catch (Exception e) {
+            System.err.println("❌ [SERVICE] Error: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
+        } finally {
+            System.out.println("════════════════════════════════════════════════════");
+        }
+    }
+
+    @Override
+    public RentalBooking updateBookingAddOns(String id, UpdateAddOnsRequestDTO updateDTO) {
+        System.out.println("════════════════════════════════════════════════════");
+        System.out.println("📝 [SERVICE] updateBookingAddOns called");
+        System.out.println("   Booking ID: " + id);
+        System.out.println("   Timestamp: " + new Date());
+        System.out.println("   Selected add-ons: " + updateDTO.getSelectedAddOnIds());
+        
+        try {
+            RentalBooking booking = rentalBookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking tidak ditemukan"));
+            
+            // Check if booking is Upcoming
+            if (!"Upcoming".equals(booking.getStatus())) {
+                System.out.println("❌ Booking status is: " + booking.getStatus());
+                throw new RuntimeException("Hanya booking dengan status 'Upcoming' yang dapat diubah");
+            }
+            
+            System.out.println("✅ Booking is Upcoming - can be modified");
+            
+            // Get old add-ons cost
+            double oldAddOnsCost = booking.getListOfAddOns() != null 
+                ? booking.getListOfAddOns().stream().mapToDouble(RentalAddOn::getPrice).sum()
+                : 0;
+            
+            System.out.println("💰 Old add-ons cost: " + oldAddOnsCost);
+            
+            // Get new add-ons
+            List<RentalAddOn> newAddOns = updateDTO.getSelectedAddOnIds() != null && !updateDTO.getSelectedAddOnIds().isEmpty()
+                ? rentalAddOnRepository.findAllById(updateDTO.getSelectedAddOnIds().stream()
+                    .map(UUID::fromString)
+                    .collect(Collectors.toList()))
+                : new ArrayList<>();
+            
+            double newAddOnsCost = newAddOns.stream().mapToDouble(RentalAddOn::getPrice).sum();
+            
+            System.out.println("✅ New add-ons selected: " + newAddOns.size());
+            System.out.println("💰 New add-ons cost: " + newAddOnsCost);
+            
+            // Recalculate total price
+            // Total = Base (vehicle + driver) + New add-ons cost
+            double basePrice = booking.getTotalPrice() - oldAddOnsCost;
+            double newTotalPrice = basePrice + newAddOnsCost;
+            
+            System.out.println("💰 Price Calculation:");
+            System.out.println("   Old total: " + booking.getTotalPrice());
+            System.out.println("   Base (vehicle + driver): " + basePrice);
+            System.out.println("   Old add-ons cost: -" + oldAddOnsCost);
+            System.out.println("   New add-ons cost: +" + newAddOnsCost);
+            System.out.println("   New total: " + newTotalPrice);
+            
+            // Update booking
+            booking.setListOfAddOns(newAddOns);
+            booking.setTotalPrice(newTotalPrice);
+            
+            RentalBooking updatedBooking = rentalBookingRepository.save(booking);
+            System.out.println("✅ Booking add-ons updated successfully");
+            System.out.println("   Final total price: " + updatedBooking.getTotalPrice());
             
             return updatedBooking;
             

@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,4 +24,16 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String> {
     // ✅ Query untuk restore vehicle
     @Query("SELECT v FROM Vehicle v WHERE v.id = :id AND v.deletedAt IS NOT NULL")
     Optional<Vehicle> findDeletedVehicleById(@Param("id") String id);
+
+    @Query("SELECT v FROM Vehicle v WHERE v.transmission = :transmission AND v.capacity >= :capacity AND v.status = 'Available'")
+    List<Vehicle> findAvailableVehicles(
+        @Param("transmission") String transmission,
+        @Param("capacity") Integer capacity,
+        @Param("pickUpTime") LocalDateTime pickUpTime,
+        @Param("dropOffTime") LocalDateTime dropOffTime
+    );
+    
+    // Alternative: Get all available vehicles (for testing)
+    @Query("SELECT v FROM Vehicle v WHERE v.status = 'Available'")
+    List<Vehicle> findAllAvailable();
 }

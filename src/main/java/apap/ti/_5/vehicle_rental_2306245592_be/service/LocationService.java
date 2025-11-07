@@ -39,6 +39,13 @@ public class LocationService {
         }
     }
 
+    public List<String> getProvinceList() {
+        if (!isInitialized || provinces.isEmpty()) {
+            initializeProvinces();
+        }
+        return new ArrayList<>(provinces);
+    }
+
     public String getRandomProvince() {
         if (!isInitialized || provinces.isEmpty()) {
             initializeProvinces();

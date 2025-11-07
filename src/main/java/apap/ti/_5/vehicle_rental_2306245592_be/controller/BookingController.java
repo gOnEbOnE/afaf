@@ -1,8 +1,13 @@
 package apap.ti._5.vehicle_rental_2306245592_be.controller;
 
+import apap.ti._5.vehicle_rental_2306245592_be.model.RentalAddOn;
 import apap.ti._5.vehicle_rental_2306245592_be.model.RentalBooking;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.BaseResponseDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.AddAddOnsRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.CreateBookingRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.FinalizBookingRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.RentalBookingResponseDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.SearchVehiclesResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.RentalAddOn.RentalAddOnResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.service.BookingService;
 import org.springframework.http.HttpStatus;
@@ -16,6 +21,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/bookings")
+@CrossOrigin(origins = "http://localhost:5173")
 public class BookingController {
 
     private final BookingService bookingService;
@@ -149,5 +155,100 @@ public class BookingController {
             );
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
+    }
+
+    @PostMapping("/search")
+    public ResponseEntity<BaseResponseDTO<SearchVehiclesResponseDTO>> searchAvailableVehicles(
+            @RequestBody CreateBookingRequestDTO criteria) {
+        try {
+            System.out.println("🔍 [API] Search request received");
+            SearchVehiclesResponseDTO result = bookingService.searchAvailableVehicles(criteria);
+            
+            String message = result.getAvailableVehicles().isEmpty() 
+                ? "Tidak ada kendaraan yang tersedia sesuai dengan kriteria pencarian" 
+                : "Vehicles found: " + result.getAvailableVehicles().size();
+            
+            BaseResponseDTO<SearchVehiclesResponseDTO> response = new BaseResponseDTO<>(
+                200, message, new Date(), result
+            );
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            System.err.println("❌ [API] Search error: " + e.getMessage());
+            BaseResponseDTO<SearchVehiclesResponseDTO> response = new BaseResponseDTO<>(
+                400, e.getMessage(), new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (Exception e) {
+            System.err.println("❌ [API] Unexpected error: " + e.getMessage());
+            e.printStackTrace();
+            BaseResponseDTO<SearchVehiclesResponseDTO> response = new BaseResponseDTO<>(
+                500, "Terjadi kesalahan pada server", new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @PostMapping("/finalize")
+    public ResponseEntity<BaseResponseDTO<RentalBookingResponseDTO>> finalizeBooking(
+            @RequestBody FinalizBookingRequestDTO request) {
+        try {
+            System.out.println("📝 [API] Finalize booking request received");
+            
+            if (request.getBookingDTO() == null || request.getAddOnsDTO() == null) {
+                throw new RuntimeException("Data booking atau add-ons tidak boleh kosong");
+            }
+            
+            RentalBooking createdBooking = bookingService.createBookingWithAddOns(
+                request.getBookingDTO(), 
+                request.getAddOnsDTO()
+            );
+            
+            RentalBookingResponseDTO dto = convertToDTO(createdBooking);
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                201, "Booking berhasil dibuat: " + createdBooking.getId(), new Date(), dto
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (RuntimeException e) {
+            System.err.println("❌ [API] Finalize error: " + e.getMessage());
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                400, e.getMessage(), new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (Exception e) {
+            System.err.println("❌ [API] Unexpected error: " + e.getMessage());
+            e.printStackTrace();
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                500, "Terjadi kesalahan pada server", new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @GetMapping("/addons")
+    public ResponseEntity<BaseResponseDTO<List<RentalAddOnResponseDTO>>> getAllAddOns() {
+        List<RentalAddOn> addOns = bookingService.getAllAddOns();
+        List<RentalAddOnResponseDTO> addOnDTOs = addOns.stream()
+            .map(addOn -> new RentalAddOnResponseDTO(
+                addOn.getId(),
+                addOn.getName(),
+                addOn.getPrice(),
+                addOn.getCreatedAt(),
+                addOn.getUpdatedAt()
+            ))
+            .collect(Collectors.toList());
+        
+        BaseResponseDTO<List<RentalAddOnResponseDTO>> response = new BaseResponseDTO<>(
+            200, "Add-ons retrieved successfully", new Date(), addOnDTOs
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/provinces")
+    public ResponseEntity<BaseResponseDTO<List<String>>> getAllProvinces() {
+        List<String> provinces = bookingService.getAllProvinces();
+        BaseResponseDTO<List<String>> response = new BaseResponseDTO<>(
+            200, "Provinces retrieved successfully", new Date(), provinces
+        );
+        return ResponseEntity.ok(response);
     }
 }

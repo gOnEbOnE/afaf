@@ -4,6 +4,7 @@ import apap.ti._5.vehicle_rental_2306245592_be.model.RentalAddOn;
 import apap.ti._5.vehicle_rental_2306245592_be.model.RentalBooking;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.CreateBookingRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingStatusDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.AddAddOnsRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.SearchVehiclesResponseDTO;
 
@@ -32,4 +33,13 @@ public interface BookingService {
     
     // ✅ NEW: Update booking details
     RentalBooking updateBookingDetails(String id, UpdateBookingRequestDTO updateDTO);
+    
+    // ✅ NEW: Get booking for update status
+    Optional<RentalBooking> getBookingForUpdateStatus(String id);
+    
+    // ✅ NEW: Update booking status
+    RentalBooking updateBookingStatus(String id, UpdateBookingStatusDTO updateDTO);
+    
+    // ✅ Helper: Get available status transitions
+    List<String> getAvailableStatusTransitions(String currentStatus, String bookingId);
 }

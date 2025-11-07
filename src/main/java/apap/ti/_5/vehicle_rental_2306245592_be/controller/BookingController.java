@@ -7,6 +7,7 @@ import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.AddAddOns
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.CreateBookingRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.FinalizBookingRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingStatusDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.RentalBookingResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.SearchVehiclesResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.RentalAddOn.RentalAddOnResponseDTO;
@@ -296,6 +297,125 @@ public class BookingController {
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             System.err.println("❌ [API] Update booking error: " + e.getMessage());
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                400, e.getMessage(), new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (Exception e) {
+            System.err.println("❌ [API] Unexpected error: " + e.getMessage());
+            e.printStackTrace();
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                500, "Terjadi kesalahan pada server", new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @GetMapping("/{id}/update-status")
+    public ResponseEntity<BaseResponseDTO<RentalBookingResponseDTO>> getBookingForUpdateStatus(@PathVariable String id) {
+        try {
+            System.out.println("🔍 [API] GET /bookings/" + id + "/update-status");
+            System.out.println("   Timestamp: " + new Date());
+            
+            Optional<RentalBooking> booking = bookingService.getBookingForUpdateStatus(id);
+            
+            if (booking.isPresent()) {
+                System.out.println("✅ Booking found with status: " + booking.get().getStatus());
+                RentalBookingResponseDTO dto = convertToDTO(booking.get());
+                BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                    200, "Booking retrieved for status update", new Date(), dto
+                );
+                System.out.println("✅ Returning booking DTO");
+                return ResponseEntity.ok(response);
+            }
+            
+            System.out.println("❌ Booking not found");
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                404, "Booking not found", new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        } catch (RuntimeException e) {
+            System.err.println("❌ [API] Get booking for update status error: " + e.getMessage());
+            e.printStackTrace();
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                400, e.getMessage(), new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (Exception e) {
+            System.err.println("❌ [API] Unexpected error: " + e.getMessage());
+            e.printStackTrace();
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                500, "Terjadi kesalahan pada server", new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @GetMapping("/{id}/available-status-transitions")
+    public ResponseEntity<BaseResponseDTO<List<String>>> getAvailableStatusTransitions(@PathVariable String id) {
+        try {
+            System.out.println("🔍 [API] GET /bookings/" + id + "/available-status-transitions");
+            System.out.println("   Timestamp: " + new Date());
+            
+            Optional<RentalBooking> booking = bookingService.getBookingForUpdateStatus(id);
+            
+            if (booking.isPresent()) {
+                System.out.println("✅ Booking found, current status: " + booking.get().getStatus());
+                List<String> transitions = bookingService.getAvailableStatusTransitions(
+                    booking.get().getStatus(), 
+                    id
+                );
+                System.out.println("✅ Available transitions: " + transitions);
+                BaseResponseDTO<List<String>> response = new BaseResponseDTO<>(
+                    200, "Available transitions retrieved", new Date(), transitions
+                );
+                return ResponseEntity.ok(response);
+            }
+            
+            System.out.println("❌ Booking not found");
+            BaseResponseDTO<List<String>> response = new BaseResponseDTO<>(
+                404, "Booking not found", new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        } catch (RuntimeException e) {
+            System.err.println("❌ [API] Get transitions error: " + e.getMessage());
+            e.printStackTrace();
+            BaseResponseDTO<List<String>> response = new BaseResponseDTO<>(
+                400, e.getMessage(), new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (Exception e) {
+            System.err.println("❌ [API] Unexpected error: " + e.getMessage());
+            e.printStackTrace();
+            BaseResponseDTO<List<String>> response = new BaseResponseDTO<>(
+                500, "Terjadi kesalahan pada server", new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    @PutMapping("/update-status")
+    public ResponseEntity<BaseResponseDTO<RentalBookingResponseDTO>> updateBookingStatus(
+            @RequestBody UpdateBookingStatusDTO updateDTO) {
+        try {
+            System.out.println("📝 [API] PUT /bookings/update-status");
+            System.out.println("   Timestamp: " + new Date());
+            System.out.println("   Booking ID: " + updateDTO.getBookingId());
+            System.out.println("   New Status: " + updateDTO.getNewStatus());
+            
+            RentalBooking updatedBooking = bookingService.updateBookingStatus(updateDTO.getBookingId(), updateDTO);
+            System.out.println("✅ Booking status updated successfully");
+            
+            RentalBookingResponseDTO dto = convertToDTO(updatedBooking);
+            
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                200, "Booking status updated successfully", new Date(), dto
+            );
+            System.out.println("✅ Returning updated booking DTO");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            System.err.println("❌ [API] Update status error: " + e.getMessage());
+            e.printStackTrace();
             BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
                 400, e.getMessage(), new Date(), null
             );

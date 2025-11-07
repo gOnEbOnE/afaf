@@ -9,6 +9,7 @@ import apap.ti._5.vehicle_rental_2306245592_be.repository.VehicleRepository;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.AddAddOnsRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.CreateBookingRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateBookingStatusDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.AvailableVehicleResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.SearchVehiclesResponseDTO;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -374,6 +377,203 @@ public class BookingServiceImpl implements BookingService {
         System.out.println("✅ Booking updated successfully: " + updatedBooking.getId());
         
         return updatedBooking;
+    }
+
+    @Override
+    public Optional<RentalBooking> getBookingForUpdateStatus(String id) {
+        System.out.println("════════════════════════════════════════════════════");
+        System.out.println("🔍 [SERVICE] getBookingForUpdateStatus called");
+        System.out.println("   Booking ID: " + id);
+        System.out.println("   Timestamp: " + new Date());
+        
+        try {
+            Optional<RentalBooking> booking = rentalBookingRepository.findById(id);
+            
+            if (booking.isPresent()) {
+                System.out.println("✅ Booking found");
+                System.out.println("   Status: " + booking.get().getStatus());
+                System.out.println("   Vehicle ID: " + booking.get().getVehicle().getId());
+                System.out.println("   Pick-up time: " + booking.get().getPickUpTime());
+                System.out.println("   Drop-off time: " + booking.get().getDropOffTime());
+                return booking;
+            }
+            
+            System.out.println("❌ Booking NOT found in database");
+            throw new RuntimeException("Booking tidak ditemukan dengan ID: " + id);
+        } catch (Exception e) {
+            System.err.println("❌ [SERVICE] Error: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
+        } finally {
+            System.out.println("════════════════════════════════════════════════════");
+        }
+    }
+
+    @Override
+    public List<String> getAvailableStatusTransitions(String currentStatus, String bookingId) {
+        System.out.println("════════════════════════════════════════════════════");
+        System.out.println("🔍 [SERVICE] getAvailableStatusTransitions called");
+        System.out.println("   Current Status: " + currentStatus);
+        System.out.println("   Booking ID: " + bookingId);
+        
+        List<String> availableStatuses = new ArrayList<>();
+        
+        try {
+            RentalBooking booking = rentalBookingRepository.findById(bookingId)
+                .orElseThrow(() -> new RuntimeException("Booking tidak ditemukan"));
+            
+            LocalDateTime now = LocalDateTime.now();
+            System.out.println("   Current time: " + now);
+            System.out.println("   Pick-up time: " + booking.getPickUpTime());
+            System.out.println("   Drop-off time: " + booking.getDropOffTime());
+            
+            if ("Upcoming".equals(currentStatus)) {
+                System.out.println("📋 Checking transitions from Upcoming...");
+                
+                boolean isPickupTimeReached = now.isAfter(booking.getPickUpTime());
+                boolean isDropoffNotPassed = now.isBefore(booking.getDropOffTime());
+                boolean isVehicleAvailable = "Available".equals(booking.getVehicle().getStatus());
+                boolean isVehicleAtPickupLocation = booking.getPickUpLocation()
+                    .equals(booking.getVehicle().getLocation());
+                
+                System.out.println("   ✓ Pickup time reached: " + isPickupTimeReached);
+                System.out.println("   ✓ Dropoff not passed: " + isDropoffNotPassed);
+                System.out.println("   ✓ Vehicle available: " + isVehicleAvailable + " (status: " + booking.getVehicle().getStatus() + ")");
+                System.out.println("   ✓ Vehicle at pickup location: " + isVehicleAtPickupLocation + " (vehicle location: " + booking.getVehicle().getLocation() + ")");
+                
+                if (isPickupTimeReached && isDropoffNotPassed && isVehicleAvailable && isVehicleAtPickupLocation) {
+                    availableStatuses.add("Ongoing");
+                    System.out.println("✅ Can transition to: Ongoing");
+                } else {
+                    System.out.println("❌ Cannot transition to Ongoing - conditions not met");
+                }
+                
+            } else if ("Ongoing".equals(currentStatus)) {
+                System.out.println("📋 Checking transitions from Ongoing...");
+                
+                availableStatuses.add("Done");
+                System.out.println("✅ Can transition to: Done");
+                
+            } else if ("Done".equals(currentStatus)) {
+                System.out.println("📋 Status is Done - no transitions available");
+            } else {
+                System.out.println("⚠️  Unknown status: " + currentStatus);
+            }
+            
+            System.out.println("📊 Final available transitions: " + availableStatuses);
+            return availableStatuses;
+            
+        } catch (Exception e) {
+            System.err.println("❌ [SERVICE] Error: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
+        } finally {
+            System.out.println("════════════════════════════════════════════════════");
+        }
+    }
+
+    @Override
+    public RentalBooking updateBookingStatus(String id, UpdateBookingStatusDTO updateDTO) {
+        System.out.println("════════════════════════════════════════════════════");
+        System.out.println("📝 [SERVICE] updateBookingStatus called");
+        System.out.println("   Booking ID: " + id);
+        System.out.println("   New Status: " + updateDTO.getNewStatus());
+        System.out.println("   Timestamp: " + new Date());
+        
+        try {
+            RentalBooking booking = rentalBookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking tidak ditemukan"));
+            
+            String currentStatus = booking.getStatus();
+            String newStatus = updateDTO.getNewStatus();
+            
+            System.out.println("   Current Status: " + currentStatus);
+            System.out.println("   Transition: " + currentStatus + " -> " + newStatus);
+            
+            // Validate status transition
+            List<String> availableTransitions = getAvailableStatusTransitions(currentStatus, id);
+            if (!availableTransitions.contains(newStatus)) {
+                System.out.println("❌ Invalid transition - not in available list");
+                throw new RuntimeException("Status tidak dapat diubah dari " + currentStatus + " menjadi " + newStatus);
+            }
+            
+            System.out.println("✅ Transition is valid");
+            
+            LocalDateTime now = LocalDateTime.now();
+            Vehicle vehicle = booking.getVehicle();
+            
+            if ("Upcoming".equals(currentStatus) && "Ongoing".equals(newStatus)) {
+                System.out.println("🔄 Processing: Upcoming -> Ongoing");
+                System.out.println("   Setting booking status to: Ongoing");
+                booking.setStatus("Ongoing");
+                
+                System.out.println("   Setting vehicle status to: In Use");
+                vehicle.setStatus("In Use");
+                vehicleRepository.save(vehicle);
+                
+                System.out.println("✅ Transition Upcoming -> Ongoing completed");
+                
+            } else if ("Ongoing".equals(currentStatus) && "Done".equals(newStatus)) {
+                System.out.println("🔄 Processing: Ongoing -> Done");
+                
+                // Check if late return and calculate penalty
+                if (now.isAfter(booking.getDropOffTime())) {
+                    long minutesLate = ChronoUnit.MINUTES.between(booking.getDropOffTime(), now);
+                    long hoursLate = (long) Math.ceil((double) minutesLate / 60.0);
+                    
+                    System.out.println("⏰ LATE RETURN DETECTED!");
+                    System.out.println("   Drop-off time: " + booking.getDropOffTime());
+                    System.out.println("   Current time: " + now);
+                    System.out.println("   Minutes late: " + minutesLate);
+                    System.out.println("   Hours late (rounded up): " + hoursLate);
+                    
+                    double penaltyPerHour = 20000.0;
+                    double totalPenalty = hoursLate * penaltyPerHour;
+                    
+                    System.out.println("   Penalty per hour: Rp " + String.format("%.0f", penaltyPerHour));
+                    System.out.println("   Total penalty: Rp " + String.format("%.0f", totalPenalty));
+                    
+                    // Add penalty to total price
+                    double oldTotalPrice = booking.getTotalPrice();
+                    double newTotalPrice = oldTotalPrice + totalPenalty;
+                    booking.setTotalPrice(newTotalPrice);
+                    
+                    System.out.println("   Old total price: Rp " + String.format("%.0f", oldTotalPrice));
+                    System.out.println("   New total price: Rp " + String.format("%.0f", newTotalPrice));
+                } else {
+                    System.out.println("✅ On-time return (no penalty)");
+                }
+                
+                // Update booking status
+                System.out.println("   Setting booking status to: Done");
+                booking.setStatus("Done");
+                
+                // Update vehicle status back to "Available"
+                System.out.println("   Setting vehicle status to: Available");
+                vehicle.setStatus("Available");
+                
+                // Update vehicle location to drop-off location
+                System.out.println("   Setting vehicle location to: " + booking.getDropOffLocation());
+                vehicle.setLocation(booking.getDropOffLocation());
+                vehicleRepository.save(vehicle);
+                
+                System.out.println("✅ Transition Ongoing -> Done completed");
+            }
+            
+            RentalBooking updatedBooking = rentalBookingRepository.save(booking);
+            System.out.println("✅ Booking saved successfully");
+            System.out.println("   Final status: " + updatedBooking.getStatus());
+            System.out.println("   Final price: Rp " + String.format("%.0f", updatedBooking.getTotalPrice()));
+            
+            return updatedBooking;
+            
+        } catch (Exception e) {
+            System.err.println("❌ [SERVICE] Error: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
+        } finally {
+            System.out.println("════════════════════════════════════════════════════");
+        }
     }
 
     private String determineBookingStatus(LocalDateTime pickUpTime) {

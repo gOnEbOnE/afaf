@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -113,14 +115,24 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException("Pick-up time must be before drop-off time");
         }
         
-        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
-        System.out.println("⏰ Current UTC time: " + now);
-        System.out.println("⏰ Pick-up time: " + criteria.getPickUpTime());
+        // ✅ FIXED: Use ZonedDateTime for proper timezone handling
+        ZonedDateTime now = ZonedDateTime.now();
+        LocalDateTime nowLocal = now.toLocalDateTime();
         
-        LocalDateTime minAllowedTime = now.minusMinutes(5);
+        System.out.println("⏰ Current time (Zoned): " + now);
+        System.out.println("⏰ Current time (Local): " + nowLocal);
+        System.out.println("⏰ Pick-up time: " + criteria.getPickUpTime());
+        System.out.println("⏰ Timezone: " + now.getZone());
+        
+        // ✅ INCREASED tolerance to 10 minutes for timezone issues
+        LocalDateTime minAllowedTime = nowLocal.minusMinutes(10);
+        
+        System.out.println("⏰ Min allowed time: " + minAllowedTime);
+        System.out.println("⏰ Pick-up time >= min allowed: " + !criteria.getPickUpTime().isBefore(minAllowedTime));
         
         if (criteria.getPickUpTime().isBefore(minAllowedTime)) {
-            throw new RuntimeException("Pick-up time cannot be lebih dari 5 menit di masa lalu");
+            System.out.println("❌ Pick-up time is too far in the past");
+            throw new RuntimeException("Pick-up time tidak boleh lebih dari 10 menit di masa lalu");
         }
 
         // Calculate rental days
@@ -255,6 +267,11 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(status);
         booking.setListOfAddOns(addOns);
 
+        // ✅ UPDATED: DO NOT change vehicle status when creating booking
+        // Vehicle stays "Available" until booking status changes to "Ongoing"
+        System.out.println("🚗 Booking created with status: " + status);
+        System.out.println("   Vehicle status remains: " + vehicle.getStatus());
+
         return rentalBookingRepository.save(booking);
     }
 
@@ -314,10 +331,14 @@ public class BookingServiceImpl implements BookingService {
     public RentalBooking updateBookingDetails(String id, UpdateBookingRequestDTO updateDTO) {
         System.out.println("📝 Updating booking: " + id);
         
-        // Validate pickup time is in future
-        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
-        if (updateDTO.getPickUpTime().isBefore(now.minusMinutes(5))) {
-            throw new RuntimeException("Waktu pengambilan tidak boleh di masa lalu");
+        // ✅ FIXED: Use ZonedDateTime for proper timezone handling
+        ZonedDateTime now = ZonedDateTime.now();
+        LocalDateTime nowLocal = now.toLocalDateTime();
+        
+        LocalDateTime minAllowedTime = nowLocal;
+        
+        if (updateDTO.getPickUpTime().isBefore(minAllowedTime)) {
+            throw new RuntimeException("Waktu pengambilan tidak boleh lebih dari 10 menit di masa lalu");
         }
         
         // Validate time range
@@ -391,7 +412,8 @@ public class BookingServiceImpl implements BookingService {
         System.out.println("════════════════════════════════════════════════════");
         System.out.println("🔍 [SERVICE] getBookingForUpdateStatus called");
         System.out.println("   Booking ID: " + id);
-        System.out.println("   Timestamp: " + new Date());
+        
+        List<String> availableStatuses = new ArrayList<>();
         
         try {
             Optional<RentalBooking> booking = rentalBookingRepository.findById(id);
@@ -509,44 +531,83 @@ public class BookingServiceImpl implements BookingService {
             LocalDateTime now = LocalDateTime.now();
             Vehicle vehicle = booking.getVehicle();
             
+            // ✅ UPDATED: Upcoming -> Ongoing
             if ("Upcoming".equals(currentStatus) && "Ongoing".equals(newStatus)) {
                 System.out.println("🔄 Processing: Upcoming -> Ongoing");
+                
+                // Check all conditions before transition
+                boolean isPickupTimeReached = now.isAfter(booking.getPickUpTime());
+                boolean isDropoffNotPassed = now.isBefore(booking.getDropOffTime());
+                boolean isVehicleAvailable = "Available".equals(vehicle.getStatus());
+                boolean isVehicleAtPickupLocation = booking.getPickUpLocation()
+                    .equals(vehicle.getLocation());
+                
+                System.out.println("   Pickup time reached: " + isPickupTimeReached);
+                System.out.println("   Dropoff not passed: " + isDropoffNotPassed);
+                System.out.println("   Vehicle available: " + isVehicleAvailable);
+                System.out.println("   Vehicle at pickup location: " + isVehicleAtPickupLocation);
+                
+                if (!isPickupTimeReached || !isDropoffNotPassed || !isVehicleAvailable || !isVehicleAtPickupLocation) {
+                    throw new RuntimeException("Kondisi untuk perubahan status belum terpenuhi");
+                }
+                
+                System.out.println("   ✅ All conditions met");
                 System.out.println("   Setting booking status to: Ongoing");
                 booking.setStatus("Ongoing");
                 
+                // ✅ Set vehicle to "In Use"
                 System.out.println("   Setting vehicle status to: In Use");
                 vehicle.setStatus("In Use");
+                System.out.println("   Vehicle location: " + booking.getPickUpLocation());
+                vehicle.setLocation(booking.getPickUpLocation());
                 vehicleRepository.save(vehicle);
                 
                 System.out.println("✅ Transition Upcoming -> Ongoing completed");
                 
-            } else if ("Ongoing".equals(currentStatus) && "Done".equals(newStatus)) {
+            } 
+            // ✅ UPDATED: Ongoing -> Done
+            else if ("Ongoing".equals(currentStatus) && "Done".equals(newStatus)) {
                 System.out.println("🔄 Processing: Ongoing -> Done");
                 
                 // Check if late return and calculate penalty
-                if (now.isAfter(booking.getDropOffTime())) {
-                    long minutesLate = ChronoUnit.MINUTES.between(booking.getDropOffTime(), now);
-                    long hoursLate = (long) Math.ceil((double) minutesLate / 60.0);
+                boolean isLateReturn = now.isAfter(booking.getDropOffTime());
+                
+                System.out.println("⏰ TIME CHECK:");
+                System.out.println("   Current time: " + now);
+                System.out.println("   Drop-off time: " + booking.getDropOffTime());
+                System.out.println("   Is late return: " + isLateReturn);
+                
+                if (isLateReturn) {
+                    // ✅ FIXED: Calculate seconds, then round up to hours
+                    long secondsLate = ChronoUnit.SECONDS.between(booking.getDropOffTime(), now);
+                    
+                    // Convert to hours with ceiling (any second counts as part of an hour)
+                    long hoursLate = secondsLate > 0 ? (secondsLate + 3599) / 3600 : 0;
                     
                     System.out.println("⏰ LATE RETURN DETECTED!");
                     System.out.println("   Drop-off time: " + booking.getDropOffTime());
                     System.out.println("   Current time: " + now);
-                    System.out.println("   Minutes late: " + minutesLate);
+                    System.out.println("   Seconds late: " + secondsLate);
+                    System.out.println("   Calculation: (" + secondsLate + " + 3599) / 3600 = " + hoursLate);
                     System.out.println("   Hours late (rounded up): " + hoursLate);
                     
-                    double penaltyPerHour = 20000.0;
-                    double totalPenalty = hoursLate * penaltyPerHour;
-                    
-                    System.out.println("   Penalty per hour: Rp " + String.format("%.0f", penaltyPerHour));
-                    System.out.println("   Total penalty: Rp " + String.format("%.0f", totalPenalty));
-                    
-                    // Add penalty to total price
-                    double oldTotalPrice = booking.getTotalPrice();
-                    double newTotalPrice = oldTotalPrice + totalPenalty;
-                    booking.setTotalPrice(newTotalPrice);
-                    
-                    System.out.println("   Old total price: Rp " + String.format("%.0f", oldTotalPrice));
-                    System.out.println("   New total price: Rp " + String.format("%.0f", newTotalPrice));
+                    if (hoursLate > 0) {
+                        double penaltyPerHour = 20000.0;
+                        double totalPenalty = hoursLate * penaltyPerHour;
+                        
+                        System.out.println("   Penalty per hour: Rp " + String.format("%.0f", penaltyPerHour));
+                        System.out.println("   Total penalty: Rp " + String.format("%.0f", totalPenalty));
+                        
+                        // Add penalty to total price
+                        double oldTotalPrice = booking.getTotalPrice();
+                        double newTotalPrice = oldTotalPrice + totalPenalty;
+                        booking.setTotalPrice(newTotalPrice);
+                        
+                        System.out.println("   Old total price: Rp " + String.format("%.0f", oldTotalPrice));
+                        System.out.println("   New total price: Rp " + String.format("%.0f", newTotalPrice));
+                    } else {
+                        System.out.println("   ❌ hoursLate is 0 or negative - no penalty applied");
+                    }
                 } else {
                     System.out.println("✅ On-time return (no penalty)");
                 }
@@ -555,11 +616,9 @@ public class BookingServiceImpl implements BookingService {
                 System.out.println("   Setting booking status to: Done");
                 booking.setStatus("Done");
                 
-                // Update vehicle status back to "Available"
+                // ✅ Set vehicle back to "Available" and update location
                 System.out.println("   Setting vehicle status to: Available");
                 vehicle.setStatus("Available");
-                
-                // Update vehicle location to drop-off location
                 System.out.println("   Setting vehicle location to: " + booking.getDropOffLocation());
                 vehicle.setLocation(booking.getDropOffLocation());
                 vehicleRepository.save(vehicle);
@@ -571,6 +630,7 @@ public class BookingServiceImpl implements BookingService {
             System.out.println("✅ Booking saved successfully");
             System.out.println("   Final status: " + updatedBooking.getStatus());
             System.out.println("   Final price: Rp " + String.format("%.0f", updatedBooking.getTotalPrice()));
+            System.out.println("   Vehicle status: " + vehicle.getStatus());
             
             return updatedBooking;
             
@@ -743,6 +803,7 @@ public class BookingServiceImpl implements BookingService {
             // Update vehicle status back to Available
             Vehicle vehicle = booking.getVehicle();
             System.out.println("🚗 Updating vehicle: " + vehicle.getId());
+            System.out.println("   Current vehicle status: " + vehicle.getStatus());
             System.out.println("   Setting vehicle status to: Available");
             vehicle.setStatus("Available");
             
@@ -754,7 +815,8 @@ public class BookingServiceImpl implements BookingService {
             RentalBooking cancelledBooking = rentalBookingRepository.save(booking);
             
             System.out.println("✅ Booking cancelled successfully (soft delete)");
-            System.out.println("   Final status: " + cancelledBooking.getStatus());
+            System.out.println("   Final booking status: " + cancelledBooking.getStatus());
+            System.out.println("   Final vehicle status: Available");
             System.out.println("   Final total price: " + cancelledBooking.getTotalPrice());
             System.out.println("   Deleted at: " + cancelledBooking.getDeletedAt());
             

@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 @Data
 @NoArgsConstructor
@@ -24,9 +25,11 @@ public class UpdateBookingRequestDTO {
     private String dropOffLocation;
     
     @NotNull(message = "Pick-up time is required")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime pickUpTime;
     
     @NotNull(message = "Drop-off time is required")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime dropOffTime;
     
     @NotNull(message = "Capacity is required")
@@ -36,6 +39,13 @@ public class UpdateBookingRequestDTO {
     @NotBlank(message = "Transmission is required")
     private String transmissionNeeded;
     
-    @NotNull(message = "Include driver status is required")
-    private Boolean includeDriver;
+    private boolean includeDriver;
+    
+    public boolean getIncludeDriver() {
+        return includeDriver;
+    }
+    
+    public boolean isIncludeDriver() {
+        return includeDriver;
+    }
 }

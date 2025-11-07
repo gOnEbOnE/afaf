@@ -49,4 +49,7 @@ public interface BookingService {
     
     // ✅ NEW: Update booking add-ons
     RentalBooking updateBookingAddOns(String id, UpdateAddOnsRequestDTO updateDTO);
+    
+    // ✅ NEW: Cancel/Delete booking (soft delete)
+    RentalBooking cancelBooking(String id);
 }

@@ -54,6 +54,9 @@ public class RentalBooking {
     @Column(nullable = false)
     private String status;
     
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+    
     @ManyToMany
     @JoinTable(
         name = "booking_addons",

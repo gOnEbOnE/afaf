@@ -8,9 +8,32 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface RentalBookingRepository extends JpaRepository<RentalBooking, String> {
+    
+    // ✅ NEW: Find all not deleted
+    @Query("SELECT rb FROM RentalBooking rb WHERE rb.deletedAt IS NULL")
+    List<RentalBooking> findAllNotDeleted();
+    
+    // ✅ NEW: Find by ID not deleted
+    @Query("SELECT rb FROM RentalBooking rb WHERE rb.id = :id AND rb.deletedAt IS NULL")
+    Optional<RentalBooking> findByIdNotDeleted(@Param("id") String id);
+    
+    // ✅ NEW: Find by status not deleted
+    @Query("SELECT rb FROM RentalBooking rb WHERE rb.status = :status AND rb.deletedAt IS NULL")
+    List<RentalBooking> findByStatusNotDeleted(@Param("status") String status);
+    
+    // ✅ NEW: Find by vehicle ID not deleted
+    @Query("SELECT rb FROM RentalBooking rb WHERE rb.vehicle.id = :vehicleId AND rb.deletedAt IS NULL")
+    List<RentalBooking> findByVehicleIdNotDeleted(@Param("vehicleId") String vehicleId);
+    
+    // ✅ NEW: Find all ordered by ID DESC not deleted
+    @Query("SELECT rb FROM RentalBooking rb WHERE rb.deletedAt IS NULL ORDER BY rb.id DESC")
+    List<RentalBooking> findAllNotDeletedOrderByIdDesc();
+    
+    // Existing queries (keep for backward compatibility)
     List<RentalBooking> findByStatus(String status);
     
     List<RentalBooking> findByVehicleId(String vehicleId);

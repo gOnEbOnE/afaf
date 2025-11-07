@@ -49,12 +49,14 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public List<RentalBooking> getAllBookings() {
-        return rentalBookingRepository.findAll();
+        // ✅ UPDATED: Use soft delete query
+        return rentalBookingRepository.findAllNotDeleted();
     }
 
     @Override
     public Optional<RentalBooking> getBookingById(String id) {
-        return rentalBookingRepository.findById(id);
+        // ✅ UPDATED: Use soft delete query
+        return rentalBookingRepository.findByIdNotDeleted(id);
     }
 
     @Override
@@ -83,12 +85,14 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public List<RentalBooking> getBookingsByStatus(String status) {
-        return rentalBookingRepository.findByStatus(status);
+        // ✅ UPDATED: Use soft delete query
+        return rentalBookingRepository.findByStatusNotDeleted(status);
     }
 
     @Override
     public List<RentalBooking> getBookingsByVehicleId(String vehicleId) {
-        return rentalBookingRepository.findByVehicleId(vehicleId);
+        // ✅ UPDATED: Use soft delete query
+        return rentalBookingRepository.findByVehicleIdNotDeleted(vehicleId);
     }
 
     @Override
@@ -256,7 +260,8 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public String generateBookingId() {
-        List<RentalBooking> allBookings = rentalBookingRepository.findAllOrderByIdDesc();
+        // ✅ UPDATED: Use soft delete query
+        List<RentalBooking> allBookings = rentalBookingRepository.findAllNotDeletedOrderByIdDesc();
         
         int nextSequence = 1;
         if (!allBookings.isEmpty()) {
@@ -673,6 +678,87 @@ public class BookingServiceImpl implements BookingService {
             System.out.println("   Final total price: " + updatedBooking.getTotalPrice());
             
             return updatedBooking;
+            
+        } catch (Exception e) {
+            System.err.println("❌ [SERVICE] Error: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException(e.getMessage());
+        } finally {
+            System.out.println("════════════════════════════════════════════════════");
+        }
+    }
+
+    // ✅ NEW: Cancel booking (soft delete)
+    @Override
+    public RentalBooking cancelBooking(String id) {
+        System.out.println("════════════════════════════════════════════════════");
+        System.out.println("🗑️  [SERVICE] cancelBooking called");
+        System.out.println("   Booking ID: " + id);
+        System.out.println("   Timestamp: " + new Date());
+        
+        try {
+            RentalBooking booking = rentalBookingRepository.findByIdNotDeleted(id)
+                .orElseThrow(() -> new RuntimeException("Booking tidak ditemukan atau sudah dibatalkan"));
+            
+            System.out.println("✅ Booking found");
+            System.out.println("   Status: " + booking.getStatus());
+            System.out.println("   Pick-up time: " + booking.getPickUpTime());
+            
+            // Check if booking is Upcoming only
+            if (!"Upcoming".equals(booking.getStatus())) {
+                System.out.println("❌ Booking status is: " + booking.getStatus());
+                throw new RuntimeException("Hanya booking dengan status 'Upcoming' yang dapat dibatalkan");
+            }
+            
+            System.out.println("✅ Booking is Upcoming - can be cancelled");
+            
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime pickUpTime = booking.getPickUpTime();
+            
+            // Check if pickup time has passed
+            boolean isPickupTimePassed = now.isAfter(pickUpTime);
+            
+            System.out.println("⏰ Current time: " + now);
+            System.out.println("⏰ Pick-up time: " + pickUpTime);
+            System.out.println("⏰ Pickup time passed: " + isPickupTimePassed);
+            
+            double oldTotalPrice = booking.getTotalPrice();
+            
+            // If cancelled BEFORE pickup time: total price becomes 0
+            if (!isPickupTimePassed) {
+                System.out.println("💰 Cancellation BEFORE pickup time - setting price to 0");
+                booking.setTotalPrice(0.0);
+            } else {
+                System.out.println("💰 Cancellation AFTER pickup time - price remains: " + oldTotalPrice);
+            }
+            
+            // Update booking status to Done
+            System.out.println("   Setting booking status to: Done");
+            booking.setStatus("Done");
+            
+            // Set deleted_at timestamp (soft delete)
+            booking.setDeletedAt(LocalDateTime.now());
+            System.out.println("   Setting deletedAt: " + booking.getDeletedAt());
+            
+            // Update vehicle status back to Available
+            Vehicle vehicle = booking.getVehicle();
+            System.out.println("🚗 Updating vehicle: " + vehicle.getId());
+            System.out.println("   Setting vehicle status to: Available");
+            vehicle.setStatus("Available");
+            
+            // Update vehicle location to drop-off location
+            System.out.println("   Setting vehicle location to: " + booking.getDropOffLocation());
+            vehicle.setLocation(booking.getDropOffLocation());
+            vehicleRepository.save(vehicle);
+            
+            RentalBooking cancelledBooking = rentalBookingRepository.save(booking);
+            
+            System.out.println("✅ Booking cancelled successfully (soft delete)");
+            System.out.println("   Final status: " + cancelledBooking.getStatus());
+            System.out.println("   Final total price: " + cancelledBooking.getTotalPrice());
+            System.out.println("   Deleted at: " + cancelledBooking.getDeletedAt());
+            
+            return cancelledBooking;
             
         } catch (Exception e) {
             System.err.println("❌ [SERVICE] Error: " + e.getMessage());

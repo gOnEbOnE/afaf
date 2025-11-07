@@ -506,4 +506,37 @@ public class BookingController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
+
+    @DeleteMapping("/{id}/delete")
+    public ResponseEntity<BaseResponseDTO<RentalBookingResponseDTO>> cancelBooking(@PathVariable String id) {
+        try {
+            System.out.println("🗑️  [API] DELETE /bookings/" + id + "/delete");
+            System.out.println("   Timestamp: " + new Date());
+            
+            RentalBooking cancelledBooking = bookingService.cancelBooking(id);
+            System.out.println("✅ Booking cancelled successfully");
+            
+            RentalBookingResponseDTO dto = convertToDTO(cancelledBooking);
+            
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                200, "Booking dibatalkan dan dihapus dari daftar pesanan", new Date(), dto
+            );
+            System.out.println("✅ Returning cancelled booking DTO");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            System.err.println("❌ [API] Cancel booking error: " + e.getMessage());
+            e.printStackTrace();
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                400, e.getMessage(), new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        } catch (Exception e) {
+            System.err.println("❌ [API] Unexpected error: " + e.getMessage());
+            e.printStackTrace();
+            BaseResponseDTO<RentalBookingResponseDTO> response = new BaseResponseDTO<>(
+                500, "Terjadi kesalahan pada server", new Date(), null
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
 }

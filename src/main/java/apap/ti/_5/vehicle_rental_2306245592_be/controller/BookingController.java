@@ -26,6 +26,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
+import java.util.Map;
 
 @RestController  // ✅ IMPORTANT: Use @RestController, not @Controller
 @RequestMapping("/api/bookings")
@@ -591,5 +593,24 @@ public class BookingController {
             
             return ResponseEntity.badRequest().body(errorResponse);
         }
+    }
+
+    @GetMapping("/current-time")
+    public ResponseEntity<?> getCurrentTime() {
+        System.out.println("📡 [BE] getCurrentTime endpoint called");
+        long currentTimeMillis = System.currentTimeMillis();
+        LocalDateTime serverTime = LocalDateTime.now();
+        
+        System.out.println("   Server time: " + serverTime);
+        System.out.println("   Millis: " + currentTimeMillis);
+        
+        return ResponseEntity.ok().body(Map.of(
+            "status", 200,
+            "message", "OK",
+            "data", Map.of(
+                "timestamp", currentTimeMillis,
+                "serverTime", serverTime.toString()
+            )
+        ));
     }
 }

@@ -30,28 +30,28 @@ public interface BookingService {
     List<RentalAddOn> getAllAddOns();
     List<String> getAllProvinces();
     
-    // ✅ NEW: Get booking details for update form
+    //Get booking details for update form
     Optional<RentalBooking> getBookingForUpdate(String id);
     
-    // ✅ NEW: Update booking details
+    //  Update booking details
     RentalBooking updateBookingDetails(String id, UpdateBookingRequestDTO updateDTO);
     
-    // ✅ NEW: Get booking for update status
+    //  Get booking for update status
     Optional<RentalBooking> getBookingForUpdateStatus(String id);
     
-    // ✅ NEW: Update booking status
+    //  Update booking status
     RentalBooking updateBookingStatus(String id, UpdateBookingStatusDTO updateDTO);
     
-    // ✅ Helper: Get available status transitions
+    //  Get available status transitions
     List<String> getAvailableStatusTransitions(String currentStatus, String bookingId);
     
-    // ✅ NEW: Get booking for update add-ons
+    //  Get booking for update add-ons
     Optional<RentalBooking> getBookingForUpdateAddOns(String id);
     
-    // ✅ NEW: Update booking add-ons
+    //  Update booking add-ons
     RentalBooking updateBookingAddOns(String id, UpdateAddOnsRequestDTO updateDTO);
     
-    // ✅ NEW: Cancel/Delete booking (soft delete)
+    //  Cancel/Delete booking (soft delete)
     RentalBooking cancelBooking(String id);
     
     // Add new method to interface

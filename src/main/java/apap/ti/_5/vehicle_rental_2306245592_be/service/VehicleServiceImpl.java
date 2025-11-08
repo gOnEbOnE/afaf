@@ -145,7 +145,7 @@ public class VehicleServiceImpl implements VehicleService {
 
     @Override
     public void deleteVehicle(String id) {
-        // ✅ Soft delete - Hibernate @SoftDelete akan mengelola deletedAt
+        // Soft delete - Hibernate @SoftDelete akan mengelola deletedAt
         if (vehicleRepository.existsById(id)) {
             Optional<Vehicle> vehicle = vehicleRepository.findById(id);
             if (vehicle.isPresent()) {
@@ -161,7 +161,7 @@ public class VehicleServiceImpl implements VehicleService {
 
     @Override
     public void permanentlyDeleteVehicle(String id) {
-        // ✅ Hard delete - gunakan untuk admin saja
+        // Hard delete - gunakan untuk admin saja
         if (vehicleRepository.existsById(id)) {
             vehicleRepository.deleteById(id);
         } else {
@@ -171,7 +171,7 @@ public class VehicleServiceImpl implements VehicleService {
 
     @Override
     public void restoreVehicle(String id) {
-        // ✅ Restore soft deleted vehicle
+        // Restore soft deleted vehicle
         Optional<Vehicle> deletedVehicle = vehicleRepository.findDeletedVehicleById(id);
         if (deletedVehicle.isPresent()) {
             Vehicle v = deletedVehicle.get();

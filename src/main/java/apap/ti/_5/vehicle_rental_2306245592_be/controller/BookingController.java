@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-@RestController  // ✅ IMPORTANT: Use @RestController, not @Controller
+@RestController
 @RequestMapping("/api/bookings")
 @CrossOrigin(origins = {"http://localhost:5173", "http://localhost:8080"})
 public class BookingController {
@@ -547,7 +547,7 @@ public class BookingController {
         }
     }
 
-    @GetMapping("/chart")  // ✅ Change from "/api/chart" to just "/chart"
+    @GetMapping("/chart") 
     @CrossOrigin(origins = "http://localhost:5173")
     public ResponseEntity<?> getBookingChart(
             @RequestParam(value = "period", defaultValue = "Monthly") String period,

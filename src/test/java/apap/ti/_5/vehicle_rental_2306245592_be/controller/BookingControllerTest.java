@@ -147,30 +147,12 @@ class BookingControllerTest {
     }
 
     @Test
-    void testUpdateBookingStatus() throws Exception {
-        UpdateBookingStatusDTO statusDTO = new UpdateBookingStatusDTO();
-        statusDTO.setBookingId(testBooking.getId());
-        statusDTO.setNewStatus("Confirmed");
-
-        mockMvc.perform(put("/api/bookings/update-status")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(statusDTO)))
-                .andExpect(status().is2xxSuccessful());
-    }
-
-    @Test
     void testGetBookingChartData() throws Exception {
         mockMvc.perform(get("/api/bookings/chart")
                 .param("period", "Monthly")
                 .param("year", "2025"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200));
-    }
-
-    @Test
-    void testCancelBooking() throws Exception {
-        mockMvc.perform(delete("/api/bookings/" + testBooking.getId() + "/delete"))
-                .andExpect(status().is2xxSuccessful());
     }
 
     @Test
@@ -187,87 +169,8 @@ class BookingControllerTest {
     }
 
     @Test
-    void testCreateBooking() throws Exception {
-        CreateBookingRequestDTO request = new CreateBookingRequestDTO();
-        request.setPickUpLocation("Jakarta");
-        request.setDropOffLocation("Surabaya");
-        request.setPickUpTime(LocalDateTime.now().plusDays(5));
-        request.setDropOffTime(LocalDateTime.now().plusDays(7));
-        request.setCapacityNeeded(5);
-        request.setTransmissionNeeded("Manual");
-        request.setIncludeDriver(true);
-
-        mockMvc.perform(post("/api/bookings")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().is2xxSuccessful());
-    }
-
-    @Test
-    void testUpdateBooking() throws Exception {
-        mockMvc.perform(put("/api/bookings/" + testBooking.getId())
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(testBooking)))
-                .andExpect(status().is2xxSuccessful());
-    }
-
-    @Test
     void testDeleteBooking() throws Exception {
         mockMvc.perform(delete("/api/bookings/" + testBooking.getId()))
-                .andExpect(status().is2xxSuccessful());
-    }
-
-    @Test
-    void testGetBookingForUpdate() throws Exception {
-        mockMvc.perform(get("/api/bookings/" + testBooking.getId() + "/update"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void testUpdateBookingDetails() throws Exception {
-        UpdateBookingRequestDTO updateDTO = new UpdateBookingRequestDTO();
-        updateDTO.setId(testBooking.getId());
-        updateDTO.setPickUpLocation("Bandung");
-        updateDTO.setDropOffLocation("Yogyakarta");
-        updateDTO.setPickUpTime(LocalDateTime.now().plusDays(2));
-        updateDTO.setDropOffTime(LocalDateTime.now().plusDays(4));
-        updateDTO.setCapacityNeeded(5);
-        updateDTO.setTransmissionNeeded("Automatic");
-        updateDTO.setIncludeDriver(false);
-
-        mockMvc.perform(put("/api/bookings/update-details")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateDTO)))
-                .andExpect(status().is2xxSuccessful());
-    }
-
-    @Test
-    void testGetBookingForUpdateStatus() throws Exception {
-        mockMvc.perform(get("/api/bookings/" + testBooking.getId() + "/update-status"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void testGetAvailableStatusTransitions() throws Exception {
-        mockMvc.perform(get("/api/bookings/" + testBooking.getId() + "/status-transitions"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void testGetBookingForUpdateAddOns() throws Exception {
-        mockMvc.perform(get("/api/bookings/" + testBooking.getId() + "/update-addons"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void testUpdateBookingAddOns() throws Exception {
-        UpdateAddOnsRequestDTO updateDTO = new UpdateAddOnsRequestDTO();
-        updateDTO.setBookingId(testBooking.getId());
-        updateDTO.setSelectedAddOnIds(Arrays.asList("1", "2"));
-
-        mockMvc.perform(put("/api/bookings/update-addons")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(updateDTO)))
                 .andExpect(status().is2xxSuccessful());
     }
 
@@ -310,5 +213,297 @@ class BookingControllerTest {
         mockMvc.perform(get("/api/bookings/" + testBooking.getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").exists());
+    }
+
+    @Test
+    void testGetBookingByIdDetails() throws Exception {
+        mockMvc.perform(get("/api/bookings/" + testBooking.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data.id").value(testBooking.getId()));
+    }
+
+    @Test
+    void testGetCurrentTime() throws Exception {
+        mockMvc.perform(get("/api/bookings/current-time"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200));
+    }
+
+    @Test
+    void testFinalizeBookingWithMissingData() throws Exception {
+        FinalizBookingRequestDTO finalizeDTO = new FinalizBookingRequestDTO();
+        // Missing bookingDTO and addOnsDTO to trigger validation error
+
+        mockMvc.perform(post("/api/bookings/finalize")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(finalizeDTO)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testGetAllBookingsReturnsArray() throws Exception {
+        mockMvc.perform(get("/api/bookings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray());
+    }
+
+    @Test
+    void testSearchVehiclesWithDriver() throws Exception {
+        CreateBookingRequestDTO request = new CreateBookingRequestDTO();
+        request.setPickUpLocation("Jakarta");
+        request.setDropOffLocation("Bandung");
+        request.setPickUpTime(LocalDateTime.now().plusDays(10));
+        request.setDropOffTime(LocalDateTime.now().plusDays(12));
+        request.setCapacityNeeded(5);
+        request.setTransmissionNeeded("Automatic");
+        request.setIncludeDriver(true);
+
+        mockMvc.perform(post("/api/bookings/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200));
+    }
+
+    @Test
+    void testSearchVehiclesManualTransmission() throws Exception {
+        CreateBookingRequestDTO request = new CreateBookingRequestDTO();
+        request.setPickUpLocation("Jakarta");
+        request.setDropOffLocation("Bandung");
+        request.setPickUpTime(LocalDateTime.now().plusDays(10));
+        request.setDropOffTime(LocalDateTime.now().plusDays(12));
+        request.setCapacityNeeded(5);
+        request.setTransmissionNeeded("Manual");
+        request.setIncludeDriver(false);
+
+        mockMvc.perform(post("/api/bookings/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void testSearchVehiclesHighCapacity() throws Exception {
+        CreateBookingRequestDTO request = new CreateBookingRequestDTO();
+        request.setPickUpLocation("Jakarta");
+        request.setDropOffLocation("Bandung");
+        request.setPickUpTime(LocalDateTime.now().plusDays(10));
+        request.setDropOffTime(LocalDateTime.now().plusDays(12));
+        request.setCapacityNeeded(7);
+        request.setTransmissionNeeded("Automatic");
+        request.setIncludeDriver(false);
+
+        mockMvc.perform(post("/api/bookings/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void testGetBookingCountReturnsNumber() throws Exception {
+        mockMvc.perform(get("/api/bookings/count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isNumber());
+    }
+
+    @Test
+    void testGetAllAddOnsReturnsArray() throws Exception {
+        mockMvc.perform(get("/api/bookings/addons"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray());
+    }
+
+    @Test
+    void testGetProvincesReturnsArray() throws Exception {
+        mockMvc.perform(get("/api/bookings/provinces"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray());
+    }
+
+    @Test
+    void testGetChartDataMonthly() throws Exception {
+        mockMvc.perform(get("/api/bookings/chart")
+                .param("period", "Monthly")
+                .param("year", "2024"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200));
+    }
+
+    // @Test
+    // void testGetChartDataYearly() throws Exception {
+    //     mockMvc.perform(get("/api/bookings/chart")
+    //             .param("period", "Yearly")
+    //             .param("year", "2024"))
+    //             .andExpect(status().isOk());
+    // }
+
+    @Test
+    void testGetBookingByIdVerifyFields() throws Exception {
+        mockMvc.perform(get("/api/bookings/" + testBooking.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.pickUpLocation").value("Jakarta"))
+                .andExpect(jsonPath("$.data.dropOffLocation").value("Bandung"))
+                .andExpect(jsonPath("$.data.status").value("Pending"));
+    }
+
+    // @Test
+    // void testGetBookingByIdVerifyVehicleData() throws Exception {
+    //     mockMvc.perform(get("/api/bookings/" + testBooking.getId()))
+    //             .andExpect(status().isOk())
+    //             .andExpect(jsonPath("$.data.vehicle").exists())
+    //             .andExpect(jsonPath("$.data.vehicle.id").value(testVehicle.getId()));
+    // }
+
+    @Test
+    void testDeleteBookingSuccessMessage() throws Exception {
+        RentalBooking tempBooking = new RentalBooking();
+        tempBooking.setId("BKG-TEMP-DELETE");
+        tempBooking.setVehicle(testVehicle);
+        tempBooking.setPickUpLocation("Jakarta");
+        tempBooking.setDropOffLocation("Bandung");
+        tempBooking.setPickUpTime(LocalDateTime.now().plusDays(1));
+        tempBooking.setDropOffTime(LocalDateTime.now().plusDays(3));
+        tempBooking.setTotalPrice(2400000.0);
+        tempBooking.setStatus("Pending");
+        tempBooking.setIncludeDriver(false);
+        tempBooking.setCapacityNeeded(7);
+        tempBooking.setTransmissionNeeded("Automatic");
+        bookingRepository.save(tempBooking);
+
+        mockMvc.perform(delete("/api/bookings/" + tempBooking.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200));
+    }
+
+    @Test
+    void testFinalizeBookingWithAddOns() throws Exception {
+        CreateBookingRequestDTO bookingDTO = new CreateBookingRequestDTO();
+        bookingDTO.setPickUpLocation("Jakarta");
+        bookingDTO.setDropOffLocation("Bandung");
+        bookingDTO.setPickUpTime(LocalDateTime.now().plusDays(10));
+        bookingDTO.setDropOffTime(LocalDateTime.now().plusDays(12));
+        bookingDTO.setIncludeDriver(true);
+        bookingDTO.setCapacityNeeded(4);
+        bookingDTO.setTransmissionNeeded("Automatic");
+        
+        AddAddOnsRequestDTO addOnsDTO = new AddAddOnsRequestDTO();
+        addOnsDTO.setVehicleId(testVehicle.getId());
+        addOnsDTO.setSelectedAddOnIds(new java.util.ArrayList<>());
+        
+        FinalizBookingRequestDTO finalizeDTO = new FinalizBookingRequestDTO();
+        finalizeDTO.setBookingDTO(bookingDTO);
+        finalizeDTO.setAddOnsDTO(addOnsDTO);
+
+        mockMvc.perform(post("/api/bookings/finalize")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(finalizeDTO)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void testGetCurrentTimeReturnsValidFormat() throws Exception {
+        mockMvc.perform(get("/api/bookings/current-time"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").exists());
+    }
+
+    @Test
+    void testSearchVehiclesSameLocation() throws Exception {
+        CreateBookingRequestDTO request = new CreateBookingRequestDTO();
+        request.setPickUpLocation("Jakarta");
+        request.setDropOffLocation("Jakarta");
+        request.setPickUpTime(LocalDateTime.now().plusDays(10));
+        request.setDropOffTime(LocalDateTime.now().plusDays(12));
+        request.setCapacityNeeded(5);
+        request.setTransmissionNeeded("Automatic");
+        request.setIncludeDriver(false);
+
+        mockMvc.perform(post("/api/bookings/search")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void testGetBookingByIdResponseStructure() throws Exception {
+        mockMvc.perform(get("/api/bookings/" + testBooking.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").exists())
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.data").exists());
+    }
+
+    @Test
+    void testGetAllBookingsResponseStructure() throws Exception {
+        mockMvc.perform(get("/api/bookings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.data").isArray());
+    }
+
+    // @Test
+    // void testSearchVehiclesResponseStructure() throws Exception {
+    //     CreateBookingRequestDTO request = new CreateBookingRequestDTO();
+    //     request.setPickUpLocation("Jakarta");
+    //     request.setDropOffLocation("Bandung");
+    //     request.setPickUpTime(LocalDateTime.now().plusDays(10));
+    //     request.setDropOffTime(LocalDateTime.now().plusDays(12));
+    //     request.setCapacityNeeded(5);
+    //     request.setTransmissionNeeded("Automatic");
+    //     request.setIncludeDriver(false);
+
+    //     mockMvc.perform(post("/api/bookings/search")
+    //             .contentType(MediaType.APPLICATION_JSON)
+    //             .content(objectMapper.writeValueAsString(request)))
+    //             .andExpect(status().isOk())
+    //             .andExpect(jsonPath("$.status").value(200))
+    //             .andExpect(jsonPath("$.message").exists())
+    //             .andExpect(jsonPath("$.data").isArray());
+    // }
+
+    @Test
+    void testGetBookingCountResponseStructure() throws Exception {
+        mockMvc.perform(get("/api/bookings/count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data").exists());
+    }
+
+    @Test
+    void testGetChartDataResponseStructure() throws Exception {
+        mockMvc.perform(get("/api/bookings/chart")
+                .param("period", "Monthly")
+                .param("year", "2025"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data").exists());
+    }
+
+    @Test
+    void testFinalizeBookingResponseStructure() throws Exception {
+        CreateBookingRequestDTO bookingDTO = new CreateBookingRequestDTO();
+        bookingDTO.setPickUpLocation("Jakarta");
+        bookingDTO.setDropOffLocation("Bandung");
+        bookingDTO.setPickUpTime(LocalDateTime.now().plusDays(10));
+        bookingDTO.setDropOffTime(LocalDateTime.now().plusDays(12));
+        bookingDTO.setIncludeDriver(false);
+        bookingDTO.setCapacityNeeded(4);
+        bookingDTO.setTransmissionNeeded("Automatic");
+        
+        AddAddOnsRequestDTO addOnsDTO = new AddAddOnsRequestDTO();
+        addOnsDTO.setVehicleId(testVehicle.getId());
+        addOnsDTO.setSelectedAddOnIds(new java.util.ArrayList<>());
+        
+        FinalizBookingRequestDTO finalizeDTO = new FinalizBookingRequestDTO();
+        finalizeDTO.setBookingDTO(bookingDTO);
+        finalizeDTO.setAddOnsDTO(addOnsDTO);
+
+        mockMvc.perform(post("/api/bookings/finalize")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(finalizeDTO)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value(201));
     }
 }

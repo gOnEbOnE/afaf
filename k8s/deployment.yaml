@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vehicle-rental-2306245592-be
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vehicle-rental-2306245592-be
+  template:
+    metadata:
+      labels:
+        app: vehicle-rental-2306245592-be
+    spec:
+      containers:
+        - name: springboot-container
+          image: christophermatthew31/vehiclerental-be-2306245592:REPLACE_ME_TAG
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: vehicle-rental-2306245592-be-config
+                  key: DATABASE_URL_PROD
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: vehicle-rental-2306245592-be-config
+                  key: DATABASE_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vehicle-rental-2306245592-be-secret
+                  key: DATABASE_PASSWORD

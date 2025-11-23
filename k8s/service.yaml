@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vehicle-rental-2306245592-be-service
+  namespace: default
+spec:
+  selector:
+    app: vehicle-rental-2306245592-be
+  type: ClusterIP
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080

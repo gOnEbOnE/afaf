@@ -3,13 +3,23 @@
 ## 1. Screenshots Deployment
 
 ### 1.1 Backend Deployment Screenshot (Bruno/Postman Request)
-**[Tempat untuk screenshot - pastikan URL deployment terlihat jelas]**
 
+be1
+![alt text](image-4.png)
+![alt text](image-5.png)
+
+be2
+
+![be2](image-1.png)
+![alt text](image-2.png)
+
+cross be1 be2
+![alt text](image-3.png)
+membuka halaman be1 dengan akun be2
 ---
 
 ### 1.2 Frontend Deployment Screenshot
-**[Tempat untuk screenshot - pastikan URL deployment dan halaman terlihat jelas]**
-
+![alt text](image.png)
 ---
 
 ## 2. CI/CD Pipeline Current Implementation
@@ -17,27 +27,40 @@
 ### 2.1 Pipeline Architecture (Spring Boot Backend)
 
 ```mermaid
-graph LR
-    A[Developer Push Code] --> B[GitLab CI Triggered]
-    B --> C{Git Branch?}
-    C -->|main/develop| D[Build Stage]
-    C -->|Other Branch| Z[Skip Pipeline]
-    D --> E{Build Success?}
-    E -->|Yes| F[Docker Push Stage]
-    E -->|No| Z1[Pipeline Failed]
-    F --> G{Push Success?}
-    G -->|Yes| H[Deploy to k3s]
-    G -->|No| Z2[Push Failed]
-    H --> I[Apply K8s Config]
-    I --> J[Rollout Status Check]
-    J --> K{Deploy Success?}
-    K -->|Yes| L[✓ Live on Production]
-    K -->|No| M[⚠ Rollback/Debug]
-    style A fill:#e1f5ff
-    style L fill:#c8e6c9
-    style Z fill:#ffcdd2
-    style Z1 fill:#ffcdd2
-    style Z2 fill:#ffcdd2
+flowchart LR
+    %% Node Definitions
+    push([Git Push])
+    gitlab{{GitLab CI}}
+    
+    subgraph CI_Stage [Build Stage]
+        direction TB
+        gradle[Gradle Build & Test]
+        artifact(App.jar)
+    end
+
+    subgraph Docker_Stage [Docker Stage]
+        dbuild[Docker Build]
+        dpush[Push to Registry]
+    end
+
+    subgraph CD_Stage [Deploy Stage]
+        ssh[SSH Connection]
+        deploy[Pull & Restart Container]
+    end
+
+    %% Connections
+    push --> gitlab
+    gitlab --> gradle
+    gradle --> artifact
+    artifact --> dbuild
+    dbuild --> dpush
+    dpush --> ssh
+    ssh --> deploy
+
+    %% Styling
+    style CI_Stage fill:#e3f2fd,stroke:#1565c0
+    style Docker_Stage fill:#fff3e0,stroke:#e65100
+    style CD_Stage fill:#e8f5e9,stroke:#2e7d32
 ```
 
 ### 2.2 Deskripsi Pipeline Current:
@@ -61,37 +84,59 @@ Pipeline CI/CD untuk backend Spring Boot terdiri dari 3 tahap utama:
 ### 3.1 Enhanced Pipeline Architecture
 
 ```mermaid
-graph LR
-    A[Developer Push Code] --> B[GitLab CI Triggered]
-    B --> C[Code Quality Check]
-    C --> D{SonarQube Pass?}
-    D -->|Yes| E[Build Stage]
-    D -->|No| Z1[Quality Gate Failed]
-    E --> F{Build Success?}
-    F -->|Yes| G[Unit Test & Coverage]
-    F -->|No| Z2[Build Failed]
-    G --> H{Tests Pass?}
-    H -->|Yes| I[Docker Build & Scan]
-    H -->|No| Z3[Tests Failed]
-    I --> J{Security Scan OK?}
-    J -->|Yes| K[Push to Registry]
-    J -->|No| Z4[Security Vulnerability]
-    K --> L{Branch Type?}
-    L -->|PR/Dev| M[Deploy to Staging]
-    L -->|Release| N[Manual Approval]
-    N --> O[Deploy to Production]
-    M --> P[Smoke Tests]
-    O --> Q[Health Check & Monitor]
-    P --> R{Staging OK?}
-    R -->|Yes| S[Ready for Release]
-    R -->|No| T[Rollback]
-    style A fill:#e1f5ff
-    style S fill:#c8e6c9
-    style Z1 fill:#ffcdd2
-    style Z2 fill:#ffcdd2
-    style Z3 fill:#ffcdd2
-    style Z4 fill:#ffcdd2
-    style N fill:#fff9c4
+flowchart TD
+    %% Nodes
+    dev([Developer]) -->|Push Code| repo{{GitLab Repo}}
+    
+    subgraph Quality_Security [1. Quality & Security]
+        test[Unit Tests]
+        sonar[SonarQube Scan]
+        sast[SAST Security Check]
+    end
+
+    subgraph Build_Publish [2. Build & Publish]
+        build[Gradle Build]
+        docker[Docker Build]
+        trivy[Trivy Image Scan]
+        push[Push Registry]
+    end
+
+    subgraph Staging_Env [3. Staging Deployment]
+        deploy_stg[Deploy to Staging]
+        smoke[Smoke Test]
+    end
+
+    gate{Manual Approval}
+
+    subgraph Prod_Env [4. Production Deployment]
+        deploy_prod[Deploy to Production]
+        notify[Discord/Slack Notification]
+    end
+
+    %% Flows
+    repo --> test
+    test --> sonar
+    sonar --> sast
+    sast --> build
+    build --> docker
+    docker --> trivy
+    trivy -->|Safe| push
+    trivy -->|Vulnerable| notify
+    push --> deploy_stg
+    deploy_stg --> smoke
+    smoke -->|Pass| gate
+    gate -->|Approve| deploy_prod
+    deploy_prod --> notify
+
+    %% Styling
+    classDef secure fill:#ffebee,stroke:#c62828,stroke-width:2px;
+    classDef normal fill:#e3f2fd,stroke:#1565c0;
+    classDef prod fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+
+    class sonar,sast,trivy secure;
+    class deploy_prod,gate prod;
+    class test,build,docker,push,deploy_stg,smoke,notify normal;
+    
 ```
 
 ### 3.2 Improvement Details:
@@ -373,7 +418,7 @@ type: LoadBalancer
 spec:
   ports:
   - port: 80
-    targetPort: 8080
+    targetPort: 8082
 ```
 **Karakteristik:**
 - Cloud provider allocate external IP

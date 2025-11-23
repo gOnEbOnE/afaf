@@ -39,6 +39,8 @@ docker-push:
   only:
     - main
     - develop
+    - feat/praktikum-9
+
 
 deploy:
   stage: deploy
@@ -71,3 +73,4 @@ deploy:
   only:
     - main
     - develop
+    - feat/praktikum-9

@@ -30,11 +30,6 @@ public class VehicleRental2306245592BeApplication {
     }
 
     @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
-    }
-
-    @Bean
     @Profile("!test")
     public CommandLineRunner createDummyData(
             RentalVendorRepository rentalVendorRepository,

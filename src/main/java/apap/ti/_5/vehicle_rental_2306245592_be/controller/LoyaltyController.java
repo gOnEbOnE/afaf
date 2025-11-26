@@ -47,6 +47,7 @@ public class LoyaltyController {
     private String apiKey;
     
     // [GET] Get All Available Coupons - Superadmin, Customer
+    
     @GetMapping("/coupons")
     public ResponseEntity<BaseResponseDTO<List<CouponResponseDTO>>> getAllCoupons(
             @RequestHeader(value = "Authorization", required = false) String authHeader) {

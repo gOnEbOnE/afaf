@@ -5,3 +5,10 @@ spring:
     url: ${DATABASE_URL_DEV}
     username: ${DEV_USERNAME}
     password: ${DEV_PASSWORD}
+
+external:
+  api:
+    base-url: ${EXTERNAL_API_BASE_URL}
+
+api:
+  key: ${API_KEY}

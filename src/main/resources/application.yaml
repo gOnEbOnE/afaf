@@ -10,3 +10,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+
+external:
+  api:
+    base-url: https://acc-be.beel.my.id/api
+
+api:
+  key: your-secret-api-key-here

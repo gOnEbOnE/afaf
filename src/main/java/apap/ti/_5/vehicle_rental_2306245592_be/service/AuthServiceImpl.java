@@ -10,14 +10,16 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import lombok.RequiredArgsConstructor; // <-- Tambahkan import ini
 
 @Service
 @Slf4j
+@RequiredArgsConstructor // <-- Tambahkan anotasi ini
 public class AuthServiceImpl implements AuthService {
     
     private static final String AUTH_API_URL = "https://acc-be.beel.my.id/api/auth/me";
-    private final RestTemplate restTemplate = new RestTemplate();
-    
+    // private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;    
     @Override
     public AuthUserDTO getCurrentUser(String token) {
         try {

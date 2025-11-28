@@ -18,4 +18,4 @@ external:
     base-url: https://acc-be.beel.my.id/api
 
 api:
-  key: your-secret-api-key-here
+  key: ${API_KEY}

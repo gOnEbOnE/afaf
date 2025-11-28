@@ -14,9 +14,11 @@ import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateAdd
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.AvailableVehicleResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.BookingChartDataDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.SearchVehiclesResponseDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.auth.AuthUserDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -28,17 +30,18 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
 @Service
 @Transactional
-@RequiredArgsConstructor 
+@RequiredArgsConstructor
+@Slf4j
 public class BookingServiceImpl implements BookingService {
 
     private final RentalBookingRepository rentalBookingRepository;
     private final VehicleRepository vehicleRepository;
     private final RentalAddOnRepository rentalAddOnRepository;
+    private final AuthService authService;
     private final LocationService locationService;
-    
+
     private static final Double DRIVER_COST_PER_DAY = 100000.0;
 
     // Lombok creates:
@@ -845,6 +848,31 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException(e.getMessage());
         } finally {
             System.out.println("════════════════════════════════════════════════════");
+        }
+    }
+
+    // ✅ NEW METHOD: Get bookings by current customer (from token)
+    public List<RentalBooking> getBookingsByCurrentCustomer(String token) {
+        try {
+            AuthUserDTO user = authService.getCurrentUser(token);
+            String customerId = user.getId();
+            return rentalBookingRepository.findAllByCustomerId(customerId);
+        } catch (Exception e) {
+            log.error("Error getting bookings for current customer: {}", e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    // ✅ Update: Get not deleted bookings by current customer
+    public List<RentalBooking> getBookingsByCurrentCustomerNotDeleted(String token) {
+        try {
+            AuthUserDTO user = authService.getCurrentUser(token);
+            String customerId = user.getId();
+            // ✅ USE QUERY DARI REPOSITORY (JAUH LEBIH CLEAN)
+            return rentalBookingRepository.findByCustomerIdNotDeleted(customerId);
+        } catch (Exception e) {
+            log.error("Error getting not deleted bookings for current customer: {}", e.getMessage());
+            return new ArrayList<>();
         }
     }
 

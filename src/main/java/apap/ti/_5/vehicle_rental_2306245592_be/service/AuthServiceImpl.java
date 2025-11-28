@@ -10,20 +10,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
-import lombok.RequiredArgsConstructor; // <-- Tambahkan import ini
+import lombok.RequiredArgsConstructor;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor // <-- Tambahkan anotasi ini
+@RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
     
     private static final String AUTH_API_URL = "https://acc-be.beel.my.id/api/auth/me";
-    // private final RestTemplate restTemplate = new RestTemplate();
-    private final RestTemplate restTemplate;    
+    private final RestTemplate restTemplate;
+    
     @Override
     public AuthUserDTO getCurrentUser(String token) {
         try {
-            // Validasi token tidak kosong
             if (token == null || token.trim().isEmpty()) {
                 throw new RuntimeException("Token is empty or null");
             }
@@ -80,5 +79,32 @@ public class AuthServiceImpl implements AuthService {
             log.error("Error checking customer role: {}", e.getMessage());
             return false;
         }
+    }
+    
+    @Override
+    public boolean isRentalVendor(String token) {
+        try {
+            AuthUserDTO user = getCurrentUser(token);
+            return "RentalVendor".equalsIgnoreCase(user.getRole());
+        } catch (Exception e) {
+            log.error("Error checking vendor role: {}", e.getMessage());
+            return false;
+        }
+    }
+    
+    @Override
+    public boolean hasVehicleAccess(String token) {
+        return isSuperadmin(token) || isRentalVendor(token);
+    }
+    
+    @Override
+    public boolean hasBookingReadAccess(String token) {
+        return isSuperadmin(token) || isRentalVendor(token) || isCustomer(token);
+    }
+    
+    @Override
+    public boolean hasBookingCreateAccess(String token) {
+        // Hanya Superadmin dan Customer, BUKAN Rental Vendor
+        return isSuperadmin(token) || isCustomer(token);
     }
 }

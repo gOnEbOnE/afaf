@@ -21,9 +21,9 @@ public interface RentalBookingRepository extends JpaRepository<RentalBooking, St
     @Query("SELECT b FROM RentalBooking b WHERE b.customerId = :customerId AND b.deletedAt IS NULL ORDER BY b.createdAt DESC")
     List<RentalBooking> findByCustomerIdNotDeleted(@Param("customerId") String customerId);
     
-    // ✅ NEW: Find all not deleted
-    @Query("SELECT rb FROM RentalBooking rb WHERE rb.deletedAt IS NULL")
-    List<RentalBooking> findAllNotDeleted();
+    // // ✅ NEW: Find all not deleted
+    // @Query("SELECT rb FROM RentalBooking rb WHERE rb.deletedAt IS NULL")
+    // List<RentalBooking> findAllNotDeleted();
 
     // ✅ NEW: Find by status not deleted
     @Query("SELECT rb FROM RentalBooking rb WHERE rb.status = :status AND rb.deletedAt IS NULL")
@@ -56,8 +56,8 @@ public interface RentalBookingRepository extends JpaRepository<RentalBooking, St
     // ============ PBI-BE-V7 & V8: SOFT DELETE ============
     
     // Get all bookings NOT deleted, ordered by created date DESC
-    @Query("SELECT b FROM RentalBooking b WHERE b.deletedAt IS NULL ORDER BY b.createdAt DESC")
-    List<RentalBooking> findAllNotDeletedOrderByCreatedDesc();
+    @Query("SELECT rb FROM RentalBooking rb WHERE rb.deletedAt IS NULL ORDER BY rb.createdAt DESC")
+    List<RentalBooking> findAllNotDeleted();
     
     // Get booking by ID NOT deleted
     @Query("SELECT b FROM RentalBooking b WHERE b.id = :id AND b.deletedAt IS NULL")

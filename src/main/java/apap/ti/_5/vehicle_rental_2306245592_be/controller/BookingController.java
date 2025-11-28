@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class BookingController {
-
     private final BookingService bookingService;
     private final AuthService authService;
 
@@ -444,9 +443,11 @@ public class BookingController {
                 throw new RuntimeException("Data booking atau add-ons tidak boleh kosong");
             }
             
+            // ✅ Pass token ke service untuk mengambil customer ID
             RentalBooking createdBooking = bookingService.createBookingWithAddOns(
                 request.getBookingDTO(), 
-                request.getAddOnsDTO()
+                request.getAddOnsDTO(),
+                token  // Add token parameter
             );
             
             RentalBookingResponseDTO dto = convertToDTO(createdBooking);

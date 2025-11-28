@@ -103,14 +103,22 @@ public class VehicleRental2306245592BeApplication {
                 vehicle.setBrand(brands[faker.random().nextInt(brands.length)]);
                 vehicle.setModel(models[faker.random().nextInt(models.length)]);
                 vehicle.setYear(faker.random().nextInt(2024 - 2015) + 2015);
-                vehicle.setLocation(locationService.getRandomProvince());
+                
+                // ✅ Assign a random vendor first
+                RentalVendor randomVendor = vendors.get(faker.random().nextInt(vendors.size()));
+                vehicle.setRentalVendor(randomVendor);
+                
+                // ✅ Get vehicle location from vendor's locations
+                List<String> vendorLocations = randomVendor.getListOfLocations();
+                String vehicleLocation = vendorLocations.get(faker.random().nextInt(vendorLocations.size()));
+                vehicle.setLocation(vehicleLocation);
+                
                 vehicle.setLicensePlate(faker.bothify("?? #### ??"));
                 vehicle.setCapacity(faker.random().nextInt(7) + 1);
                 vehicle.setTransmission(transmissions[faker.random().nextInt(transmissions.length)]);
                 vehicle.setFuelType(fuelTypes[faker.random().nextInt(fuelTypes.length)]);
                 vehicle.setPrice((double) (faker.random().nextInt(2000) + 500) * 1000);
                 vehicle.setStatus("Available");
-                vehicle.setRentalVendor(vendors.get(faker.random().nextInt(vendors.size())));
                 
                 vehicles.add(vehicleRepository.save(vehicle));
             }

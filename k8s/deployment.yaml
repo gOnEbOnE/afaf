@@ -39,3 +39,8 @@ spec:
                 configMapKeyRef:          # Ganti secretKeyRef menjadi configMapKeyRef
                   name: vehicle-rental-2306245592-be-config # Arahkan ke nama ConfigMap
                   key: CORS_ALLOWED_ORIGINS
+            - name: API_KEY  # <--- Pastikan ini ada
+              valueFrom:
+                secretKeyRef:
+                  name: vehicle-rental-2306245592-be-secret
+                  key: API_KEY

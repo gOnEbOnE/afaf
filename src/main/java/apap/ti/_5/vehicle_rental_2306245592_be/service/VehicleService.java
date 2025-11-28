@@ -38,4 +38,7 @@ public interface VehicleService {
     // Check if vehicle can be updated (not being rented)
     boolean canUpdateVehicle(String id);
     String generateVehicleId();
+    
+    // Get or create vendor for SSO integration
+    RentalVendor getOrCreateVendor(String token);
 }

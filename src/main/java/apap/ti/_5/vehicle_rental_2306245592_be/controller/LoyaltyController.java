@@ -83,12 +83,12 @@ public class LoyaltyController {
     
     // [GET] Get All Purchased Coupons - Customer only
     @GetMapping("/coupons/purchased")
-    public ResponseEntity<BaseResponseDTO<List<CouponResponseDTO>>> getPurchasedCoupons(
+    public ResponseEntity<BaseResponseDTO<List<PurchasedCouponResponseDTO>>> getPurchasedCoupons(
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
-            // Validasi Authorization header ada
             if (authHeader == null || authHeader.trim().isEmpty()) {
-                BaseResponseDTO<List<CouponResponseDTO>> response = new BaseResponseDTO<>(
+                // jadi PurchasedCouponResponseDTO
+                BaseResponseDTO<List<PurchasedCouponResponseDTO>> response = new BaseResponseDTO<>(
                     401,
                     "Unauthorized: Authorization header is required",
                     new Date(),
@@ -97,9 +97,8 @@ public class LoyaltyController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
             }
             
-            // Validasi format Bearer token
             if (!authHeader.startsWith("Bearer ")) {
-                BaseResponseDTO<List<CouponResponseDTO>> response = new BaseResponseDTO<>(
+                BaseResponseDTO<List<PurchasedCouponResponseDTO>> response = new BaseResponseDTO<>(
                     401,
                     "Unauthorized: Invalid token format. Use 'Bearer <token>'",
                     new Date(),
@@ -111,9 +110,8 @@ public class LoyaltyController {
             String token = authHeader.substring(7);
             AuthUserDTO currentUser = authService.getCurrentUser(token);
             
-            // Validasi hanya Customer yang bisa akses
             if (!authService.isCustomer(token)) {
-                BaseResponseDTO<List<CouponResponseDTO>> response = new BaseResponseDTO<>(
+                BaseResponseDTO<List<PurchasedCouponResponseDTO>> response = new BaseResponseDTO<>(
                     403,
                     "Forbidden: Only Customers can view purchased coupons",
                     new Date(),
@@ -126,21 +124,35 @@ public class LoyaltyController {
             String customerId = currentUser.getId();
             
             List<PurchasedCoupon> purchasedCoupons = loyaltyService.getPurchasedCoupons(customerId);
-            List<CouponResponseDTO> couponDTOs = purchasedCoupons.stream()
-                .map(pc -> mapToCouponResponseDTO(pc.getCoupon()))
+            
+            // MAPPING DATA (Ini bagian terpenting, sudah benar)
+            List<PurchasedCouponResponseDTO> responseDTOs = purchasedCoupons.stream()
+                .map(pc -> new PurchasedCouponResponseDTO(
+                    pc.getId(),
+                    pc.getCustomerId(),
+                    pc.getCoupon().getId(),
+                    pc.getCoupon().getName(),
+                    pc.getCouponCode(), 
+                    pc.getCoupon().getPercentOff(),
+                    pc.getIsUsed(),
+                    pc.getPurchasedAt(),
+                    0 
+                ))
                 .collect(Collectors.toList());
             
-            BaseResponseDTO<List<CouponResponseDTO>> response = new BaseResponseDTO<>(
+            BaseResponseDTO<List<PurchasedCouponResponseDTO>> response = new BaseResponseDTO<>(
                 200,
                 "Purchased coupons retrieved successfully",
                 new Date(),
-                couponDTOs
+                responseDTOs
             );
             return ResponseEntity.ok(response);
+
         } catch (Exception e) {
             log.error("Error retrieving purchased coupons: {}", e.getMessage());
-            BaseResponseDTO<List<CouponResponseDTO>> response = new BaseResponseDTO<>(
-                401,
+            
+            BaseResponseDTO<List<PurchasedCouponResponseDTO>> response = new BaseResponseDTO<>(
+                401, 
                 "Unauthorized: " + e.getMessage(),
                 new Date(),
                 null
@@ -148,6 +160,7 @@ public class LoyaltyController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         }
     }
+    
     
     // [GET] Get Customer Loyalty Points - Customer only
     @GetMapping("/points")

@@ -532,4 +532,59 @@ public class VehicleController {
                 .updatedAt(vendor.getUpdatedAt())
                 .build();
     }
+    
+    // ============ SSO INTEGRATION - GET OR CREATE VENDOR ============
+    @GetMapping("/vendor/me")
+    public ResponseEntity<BaseResponseDTO<RentalVendorResponseDTO>> getOrCreateVendor(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        
+        try {
+            // Validasi Authorization header
+            if (authHeader == null || authHeader.trim().isEmpty() || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new BaseResponseDTO<>(
+                                HttpStatus.UNAUTHORIZED.value(),
+                                "Unauthorized: Missing or invalid Authorization header",
+                                new Date(),
+                                null
+                        ));
+            }
+            
+            String token = authHeader.substring(7);
+            
+            // Get or create vendor
+            RentalVendor vendor = vehicleService.getOrCreateVendor(token);
+            
+            // Map to DTO
+            RentalVendorResponseDTO vendorDTO = mapToRentalVendorResponseDTO(vendor);
+            
+            BaseResponseDTO<RentalVendorResponseDTO> response = new BaseResponseDTO<>(
+                200, 
+                "Vendor information retrieved successfully", 
+                new Date(), 
+                vendorDTO
+            );
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (RuntimeException e) {
+            log.error("Error getting/creating vendor: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new BaseResponseDTO<>(
+                            HttpStatus.FORBIDDEN.value(),
+                            e.getMessage(),
+                            new Date(),
+                            null
+                    ));
+        } catch (Exception e) {
+            log.error("Unexpected error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new BaseResponseDTO<>(
+                            HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                            "Internal server error: " + e.getMessage(),
+                            new Date(),
+                            null
+                    ));
+        }
+    }
 }

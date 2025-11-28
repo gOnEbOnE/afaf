@@ -5,6 +5,13 @@ spring:
     url: ${DATABASE_URL_DEV}
     username: ${DEV_USERNAME}
     password: ${DEV_PASSWORD}
+    jpa:
+      hibernate:
+        ddl-auto: update # Gunakan 'update' agar data tidak hilang saat restart, atau 'create-drop' untuk reset tiap restart
+      show-sql: true # Opsional: Untuk melihat query pembuatan tabel di log
+      properties:
+        hibernate:
+          dialect: org.hibernate.dialect.PostgreSQLDialect
 
 external:
   api:

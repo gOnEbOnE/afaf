@@ -6,6 +6,7 @@ import apap.ti._5.vehicle_rental_2306245592_be.repository.RentalVendorRepository
 import apap.ti._5.vehicle_rental_2306245592_be.repository.VehicleRepository;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.vehicle.CreateVehicleRequestDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.vehicle.UpdateVehicleRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.auth.AuthUserDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.vehicle.VehicleResponseDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +22,17 @@ public class VehicleServiceImpl implements VehicleService {
 
     private final VehicleRepository vehicleRepository;
     private final RentalVendorRepository rentalVendorRepository;
+    private final AuthService authService;
+    private final LocationService locationService;
 
-    public VehicleServiceImpl(VehicleRepository vehicleRepository, RentalVendorRepository rentalVendorRepository) {
+    public VehicleServiceImpl(VehicleRepository vehicleRepository, 
+                             RentalVendorRepository rentalVendorRepository,
+                             AuthService authService,
+                             LocationService locationService) {
         this.vehicleRepository = vehicleRepository;
         this.rentalVendorRepository = rentalVendorRepository;
+        this.authService = authService;
+        this.locationService = locationService;
     }
 
     // ============ EXISTING METHODS (KEEP - untuk backward compatibility) ============
@@ -212,6 +220,82 @@ public class VehicleServiceImpl implements VehicleService {
         String status = vehicle.get().getStatus();
         // Hanya bisa update jika Available atau Maintenance
         return "Available".equals(status) || "Maintenance".equals(status);
+    }
+    
+    // ============ SSO INTEGRATION - GET OR CREATE VENDOR ============
+    
+    @Override
+    public RentalVendor getOrCreateVendor(String token) {
+        // 1. Ambil data user dari Auth Service
+        AuthUserDTO user = authService.getCurrentUser(token);
+        
+        // 2. Validasi Role: Harus RentalVendor atau Superadmin
+        String role = user.getRole();
+        if (!"RentalVendor".equalsIgnoreCase(role) && !"Superadmin".equalsIgnoreCase(role)) {
+            throw new RuntimeException("Access denied. Only Rental Vendor or Superadmin can access this resource.");
+        }
+        
+        // 3. Cek eksistensi vendor berdasarkan email
+        String email = user.getEmail();
+        Optional<RentalVendor> existingVendor = rentalVendorRepository.findByEmail(email);
+        
+        // Skenario A: Vendor sudah ada
+        if (existingVendor.isPresent()) {
+            System.out.println("✅ Vendor already exists: " + email);
+            return existingVendor.get();
+        }
+        
+        // Skenario B: Vendor belum ada - Create new
+        System.out.println("🆕 Creating new vendor for: " + email);
+        
+        RentalVendor newVendor = new RentalVendor();
+        newVendor.setName(user.getName());
+        newVendor.setEmail(user.getEmail());
+        newVendor.setPhone("0812-0000-0000"); // Default phone
+        
+        // 4. Generate 3 provinsi unik menggunakan LocationService
+        List<String> uniqueProvinces = generateUniqueProvinces(3);
+        newVendor.setListOfLocations(uniqueProvinces);
+        
+        // Set timestamps (akan otomatis di-handle oleh @CreationTimestamp dan @UpdateTimestamp)
+        // Tapi kita set manual untuk keamanan
+        newVendor.setCreatedAt(LocalDateTime.now());
+        newVendor.setUpdatedAt(LocalDateTime.now());
+        
+        // 5. Simpan ke database
+        RentalVendor savedVendor = rentalVendorRepository.save(newVendor);
+        
+        System.out.println("✅ New vendor created with ID: " + savedVendor.getId());
+        System.out.println("📍 Assigned locations: " + uniqueProvinces);
+        
+        return savedVendor;
+    }
+    
+    /**
+     * Helper method untuk generate provinsi unik
+     * @param count jumlah provinsi yang diinginkan
+     * @return List provinsi unik
+     */
+    private List<String> generateUniqueProvinces(int count) {
+        List<String> uniqueProvinces = new java.util.ArrayList<>();
+        List<String> allProvinces = locationService.getProvinceList();
+        
+        // Validasi: Pastikan ada cukup provinsi
+        if (allProvinces.size() < count) {
+            throw new RuntimeException("Not enough provinces available. Required: " + count + ", Available: " + allProvinces.size());
+        }
+        
+        // Random selection tanpa duplikasi
+        java.util.Random random = new java.util.Random();
+        List<String> tempList = new java.util.ArrayList<>(allProvinces);
+        
+        for (int i = 0; i < count; i++) {
+            int randomIndex = random.nextInt(tempList.size());
+            uniqueProvinces.add(tempList.get(randomIndex));
+            tempList.remove(randomIndex); // Hapus untuk menghindari duplikasi
+        }
+        
+        return uniqueProvinces;
     }
 
     private VehicleResponseDTO mapToVehicleResponseDTO(Vehicle vehicle) {

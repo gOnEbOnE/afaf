@@ -13,8 +13,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class MaintenanceRecordResponseDTO {
     private UUID id;
-    private UUID vehicleId;
-    private String vehicleBrand;
+    private String vehicleId; // <--- UBAH DARI UUID KE String    private String vehicleBrand;
     private String vehicleModel;
     private String vehicleLicensePlate;
     private LocalDateTime serviceDate;

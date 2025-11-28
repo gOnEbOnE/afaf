@@ -2,9 +2,13 @@ package apap.ti._5.vehicle_rental_2306245592_be.controller;
 
 import apap.ti._5.vehicle_rental_2306245592_be.model.MaintenanceRecord;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.BaseResponseDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.maintenance.CreateMaintenanceRecordRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.maintenance.UpdateMaintenanceRecordRequestDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.maintenance.UpdateMaintenanceStatusDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.maintenance.MaintenanceRecordResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.service.AuthService;
 import apap.ti._5.vehicle_rental_2306245592_be.service.MaintenanceService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -33,8 +37,7 @@ public class MaintenanceController {
     private MaintenanceRecordResponseDTO convertToDTO(MaintenanceRecord record) {
         return new MaintenanceRecordResponseDTO(
             record.getId(),
-            record.getVehicle().getId() != null ? UUID.fromString(record.getVehicle().getId()) : null,
-            record.getVehicle().getBrand(),
+            record.getVehicle().getId(), // <--- Hapus UUID.fromString(), biarkan String            record.getVehicle().getBrand(),
             record.getVehicle().getModel(),
             record.getVehicle().getLicensePlate(),
             record.getServiceDate(),
@@ -172,6 +175,291 @@ public class MaintenanceController {
                     .body(new BaseResponseDTO<>(
                             HttpStatus.INTERNAL_SERVER_ERROR.value(),
                             "Error retrieving maintenance record: " + e.getMessage(),
+                            new Date(),
+                            null
+                    ));
+        }
+    }
+    
+    /**
+     * POST /api/maintenance
+     * Create a new maintenance record
+     * RBAC: Superadmin, Rental Vendor
+     */
+    @PostMapping
+    public ResponseEntity<BaseResponseDTO<MaintenanceRecordResponseDTO>> createMaintenanceRecord(
+            @Valid @RequestBody CreateMaintenanceRecordRequestDTO request,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        
+        try {
+            // Validate Authorization header
+            if (authHeader == null || authHeader.trim().isEmpty() || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new BaseResponseDTO<>(
+                                HttpStatus.UNAUTHORIZED.value(),
+                                "Unauthorized: Missing or invalid Authorization header",
+                                new Date(),
+                                null
+                        ));
+            }
+            
+            String token = authHeader.substring(7);
+            
+            // RBAC: Only Superadmin and Rental Vendor can create maintenance records
+            if (!authService.hasVehicleAccess(token)) {
+                log.warn("Unauthorized maintenance creation attempt");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new BaseResponseDTO<>(
+                                HttpStatus.FORBIDDEN.value(),
+                                "Forbidden: You don't have permission to create maintenance records",
+                                new Date(),
+                                null
+                        ));
+            }
+            
+            // Create maintenance record (includes business validation and vehicle status update)
+            MaintenanceRecord createdRecord = maintenanceService.createMaintenanceRecord(request);
+            
+            MaintenanceRecordResponseDTO dto = convertToDTO(createdRecord);
+            
+            BaseResponseDTO<MaintenanceRecordResponseDTO> response = new BaseResponseDTO<>(
+                201, 
+                "Maintenance record created successfully. Vehicle status updated to 'In Maintenance'", 
+                new Date(), 
+                dto
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            
+        } catch (RuntimeException e) {
+            log.error("Error creating maintenance record: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new BaseResponseDTO<>(
+                            HttpStatus.BAD_REQUEST.value(),
+                            e.getMessage(),
+                            new Date(),
+                            null
+                    ));
+        } catch (Exception e) {
+            log.error("Unexpected error creating maintenance record: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new BaseResponseDTO<>(
+                            HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                            "Error creating maintenance record: " + e.getMessage(),
+                            new Date(),
+                            null
+                    ));
+        }
+    }
+    
+    /**
+     * PUT /api/maintenance/{id}
+     * Update maintenance record details
+     * RBAC: Superadmin, Rental Vendor
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<BaseResponseDTO<MaintenanceRecordResponseDTO>> updateMaintenanceRecord(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateMaintenanceRecordRequestDTO request,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        
+        try {
+            // Validate Authorization header
+            if (authHeader == null || authHeader.trim().isEmpty() || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new BaseResponseDTO<>(
+                                HttpStatus.UNAUTHORIZED.value(),
+                                "Unauthorized: Missing or invalid Authorization header",
+                                new Date(),
+                                null
+                        ));
+            }
+            
+            String token = authHeader.substring(7);
+            
+            // RBAC: Only Superadmin and Rental Vendor can update maintenance records
+            if (!authService.hasVehicleAccess(token)) {
+                log.warn("Unauthorized maintenance update attempt for ID: {}", id);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new BaseResponseDTO<>(
+                                HttpStatus.FORBIDDEN.value(),
+                                "Forbidden: You don't have permission to update maintenance records",
+                                new Date(),
+                                null
+                        ));
+            }
+            
+            // Update maintenance record
+            MaintenanceRecord updatedRecord = maintenanceService.updateMaintenanceRecord(id, request);
+            
+            MaintenanceRecordResponseDTO dto = convertToDTO(updatedRecord);
+            
+            BaseResponseDTO<MaintenanceRecordResponseDTO> response = new BaseResponseDTO<>(
+                200, 
+                "Maintenance record updated successfully", 
+                new Date(), 
+                dto
+            );
+            return ResponseEntity.ok(response);
+            
+        } catch (RuntimeException e) {
+            log.error("Error updating maintenance record: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new BaseResponseDTO<>(
+                            HttpStatus.BAD_REQUEST.value(),
+                            e.getMessage(),
+                            new Date(),
+                            null
+                    ));
+        } catch (Exception e) {
+            log.error("Unexpected error updating maintenance record: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new BaseResponseDTO<>(
+                            HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                            "Error updating maintenance record: " + e.getMessage(),
+                            new Date(),
+                            null
+                    ));
+        }
+    }
+    
+    /**
+     * PUT /api/maintenance/{id}/status
+     * Update maintenance record status
+     * If status is "Completed", automatically set vehicle status to "Available"
+     * RBAC: Superadmin, Rental Vendor
+     */
+    @PutMapping("/{id}/status")
+    public ResponseEntity<BaseResponseDTO<MaintenanceRecordResponseDTO>> updateMaintenanceStatus(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateMaintenanceStatusDTO request,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        
+        try {
+            // Validate Authorization header
+            if (authHeader == null || authHeader.trim().isEmpty() || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new BaseResponseDTO<>(
+                                HttpStatus.UNAUTHORIZED.value(),
+                                "Unauthorized: Missing or invalid Authorization header",
+                                new Date(),
+                                null
+                        ));
+            }
+            
+            String token = authHeader.substring(7);
+            
+            // RBAC: Only Superadmin and Rental Vendor can update maintenance status
+            if (!authService.hasVehicleAccess(token)) {
+                log.warn("Unauthorized maintenance status update attempt for ID: {}", id);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new BaseResponseDTO<>(
+                                HttpStatus.FORBIDDEN.value(),
+                                "Forbidden: You don't have permission to update maintenance status",
+                                new Date(),
+                                null
+                        ));
+            }
+            
+            // Update maintenance status (includes auto vehicle status update if "Completed")
+            MaintenanceRecord updatedRecord = maintenanceService.updateMaintenanceStatus(id, request);
+            
+            MaintenanceRecordResponseDTO dto = convertToDTO(updatedRecord);
+            
+            String message = "Completed".equalsIgnoreCase(request.getStatus()) 
+                ? "Maintenance record completed. Vehicle status updated to 'Available'"
+                : "Maintenance record status updated successfully";
+            
+            BaseResponseDTO<MaintenanceRecordResponseDTO> response = new BaseResponseDTO<>(
+                200, 
+                message, 
+                new Date(), 
+                dto
+            );
+            return ResponseEntity.ok(response);
+            
+        } catch (RuntimeException e) {
+            log.error("Error updating maintenance status: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new BaseResponseDTO<>(
+                            HttpStatus.BAD_REQUEST.value(),
+                            e.getMessage(),
+                            new Date(),
+                            null
+                    ));
+        } catch (Exception e) {
+            log.error("Unexpected error updating maintenance status: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new BaseResponseDTO<>(
+                            HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                            "Error updating maintenance status: " + e.getMessage(),
+                            new Date(),
+                            null
+                    ));
+        }
+    }
+    
+    /**
+     * DELETE /api/maintenance/{id}
+     * Soft delete maintenance record (set deletedAt timestamp)
+     * RBAC: Superadmin, Rental Vendor
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<BaseResponseDTO<Void>> softDeleteMaintenanceRecord(
+            @PathVariable UUID id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        
+        try {
+            // Validate Authorization header
+            if (authHeader == null || authHeader.trim().isEmpty() || !authHeader.startsWith("Bearer ")) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(new BaseResponseDTO<>(
+                                HttpStatus.UNAUTHORIZED.value(),
+                                "Unauthorized: Missing or invalid Authorization header",
+                                new Date(),
+                                null
+                        ));
+            }
+            
+            String token = authHeader.substring(7);
+            
+            // RBAC: Only Superadmin and Rental Vendor can delete maintenance records
+            if (!authService.hasVehicleAccess(token)) {
+                log.warn("Unauthorized maintenance deletion attempt for ID: {}", id);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new BaseResponseDTO<>(
+                                HttpStatus.FORBIDDEN.value(),
+                                "Forbidden: You don't have permission to delete maintenance records",
+                                new Date(),
+                                null
+                        ));
+            }
+            
+            // Soft delete maintenance record
+            maintenanceService.softDeleteMaintenanceRecord(id);
+            
+            BaseResponseDTO<Void> response = new BaseResponseDTO<>(
+                200, 
+                "Maintenance record deleted successfully", 
+                new Date(), 
+                null
+            );
+            return ResponseEntity.ok(response);
+            
+        } catch (RuntimeException e) {
+            log.error("Error deleting maintenance record: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new BaseResponseDTO<>(
+                            HttpStatus.BAD_REQUEST.value(),
+                            e.getMessage(),
+                            new Date(),
+                            null
+                    ));
+        } catch (Exception e) {
+            log.error("Unexpected error deleting maintenance record: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new BaseResponseDTO<>(
+                            HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                            "Error deleting maintenance record: " + e.getMessage(),
                             new Date(),
                             null
                     ));

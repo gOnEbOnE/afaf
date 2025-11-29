@@ -33,7 +33,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-web'
-
+    implementation 'org.apache.httpcomponents.client5:httpclient5'
     // // Security & Thymeleaf extras
     // implementation 'org.springframework.boot:spring-boot-starter-security'
     // implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'

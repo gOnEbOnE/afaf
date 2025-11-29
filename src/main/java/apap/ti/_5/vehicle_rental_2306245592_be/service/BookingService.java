@@ -25,11 +25,10 @@ public interface BookingService {
     
     // New methods for create booking flow
     SearchVehiclesResponseDTO searchAvailableVehicles(CreateBookingRequestDTO criteria);
-    RentalBooking createBookingWithAddOns(CreateBookingRequestDTO bookingDTO, AddAddOnsRequestDTO addOnsDTO);
+    RentalBooking createBookingWithAddOns(CreateBookingRequestDTO bookingDTO, AddAddOnsRequestDTO addOnsDTO, String token);
     String generateBookingId();
     List<RentalAddOn> getAllAddOns();
     List<String> getAllProvinces();
-    
     //Get booking details for update form
     Optional<RentalBooking> getBookingForUpdate(String id);
     
@@ -56,4 +55,5 @@ public interface BookingService {
     
     // Add new method to interface
     BookingChartDataDTO getBookingChartData(String period, int year);
+    
 }

@@ -2,6 +2,7 @@ package apap.ti._5.vehicle_rental_2306245592_be.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,8 +14,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "rental_booking")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class RentalBooking {
@@ -22,6 +22,10 @@ public class RentalBooking {
     @Id
     @Column(nullable = false, unique = true)
     private String id;
+
+    @Column(name = "customer_id", nullable = false)
+    private String customerId;
+    
     
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "vehicle_id", nullable = false)

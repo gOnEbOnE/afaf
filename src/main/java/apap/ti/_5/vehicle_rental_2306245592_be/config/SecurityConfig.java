@@ -1,46 +1,23 @@
-// package apap.ti._5.vehicle_rental_2306245592_be.config;
+package apap.ti._5.vehicle_rental_2306245592_be.config;
 
-// import org.springframework.context.annotation.Bean;
-// import org.springframework.context.annotation.Configuration;
-// import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-// import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-// import org.springframework.security.web.SecurityFilterChain;
-// import org.springframework.web.cors.CorsConfiguration;
-// import org.springframework.web.cors.CorsConfigurationSource;
-// import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import apap.ti._5.vehicle_rental_2306245592_be.security.ApiKeyFilter;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
-// import java.util.Arrays;
+@Configuration
+public class SecurityConfig {
 
-// @Configuration
-// @EnableWebSecurity
-// public class SecurityConfig {
-
-//     @Bean
-//     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-//         http
-//             .csrf().disable()
-//             .cors().and()
-//             .authorizeHttpRequests()
-//                 .requestMatchers("/api/vehicles/**").permitAll()
-//                 .requestMatchers("/api/vendors/**").permitAll()
-//                 .requestMatchers("/api/bookings/**").permitAll()
-//                 .anyRequest().authenticated()
-//             .and()
-//             .httpBasic();
-        
-//         return http.build();
-//     }
-
-//     @Bean
-//     public CorsConfigurationSource corsConfigurationSource() {
-//         CorsConfiguration configuration = new CorsConfiguration();
-//         configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://localhost:3000"));
-//         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-//         configuration.setAllowedHeaders(Arrays.asList("*"));
-//         configuration.setAllowCredentials(true);
-
-//         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-//         source.registerCorsConfiguration("/**", configuration);
-//         return source;
-//     }
-// }
+    /**
+     * Register ApiKeyFilter untuk semua request
+     * Filter akan secara otomatis memeriksa apakah endpoint memerlukan API Key
+     */
+    @Bean
+    public FilterRegistrationBean<ApiKeyFilter> apiKeyFilterRegistration(ApiKeyFilter apiKeyFilter) {
+        FilterRegistrationBean<ApiKeyFilter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(apiKeyFilter);
+        registrationBean.addUrlPatterns("/api/*"); // Filter akan diterapkan ke semua /api/* endpoints
+        registrationBean.setOrder(1); // Set order agar filter ini dieksekusi lebih dulu
+        return registrationBean;
+    }
+}

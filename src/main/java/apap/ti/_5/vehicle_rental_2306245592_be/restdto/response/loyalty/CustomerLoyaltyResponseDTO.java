@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CustomerLoyaltyResponseDTO {
-    
     private String customerId;
     private Integer loyaltyPoints;
 }

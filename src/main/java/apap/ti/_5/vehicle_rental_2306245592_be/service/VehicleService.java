@@ -10,20 +10,35 @@ import java.util.List;
 import java.util.Optional;
 
 public interface VehicleService {
+    
+    // ============ EXISTING METHODS (KEEP) ============
     List<Vehicle> getAllVehicles();
     Optional<Vehicle> getVehicleById(String id);
     Vehicle createVehicle(Vehicle vehicle);
-    VehicleResponseDTO createVehicleFromDTO(CreateVehicleRequestDTO createVehicleRequestDTO);
-    VehicleResponseDTO updateVehicleFromDTO(UpdateVehicleRequestDTO updateVehicleRequestDTO);
     Vehicle updateVehicle(String id, Vehicle vehicle);
     void deleteVehicle(String id);
-    void permanentlyDeleteVehicle(String id); // ✅ Hard delete
-    void restoreVehicle(String id); // ✅ Restore soft deleted
-    List<Vehicle> searchVehicles(String keyword);
     List<Vehicle> filterVehiclesByType(String type);
-    List<RentalVendor> getAllVendors();
+    List<Vehicle> searchVehicles(String keyword);
     int getVehicleCount();
-    boolean isLicensePlateTaken(String licensePlate);
-    boolean isLicensePlateTakenExcludeId(String licensePlate, String vehicleId);
+    List<RentalVendor> getAllVendors();
+    VehicleResponseDTO createVehicleFromDTO(CreateVehicleRequestDTO dto);
+    VehicleResponseDTO updateVehicleFromDTO(UpdateVehicleRequestDTO dto);
+    
+    // ============ NEW METHODS FOR SOFT DELETE SUPPORT ============
+    
+    // PBI-BE-V1: Get all vehicles NOT deleted
+    List<Vehicle> getAllVehiclesNotDeleted();
+    
+    // PBI-BE-V2: Get vehicle by ID NOT deleted
+    Optional<Vehicle> getVehicleByIdNotDeleted(String id);
+    
+    // Soft delete vehicle (set deletedAt timestamp)
+    void softDeleteVehicle(String id);
+    
+    // Check if vehicle can be updated (not being rented)
+    boolean canUpdateVehicle(String id);
     String generateVehicleId();
+    
+    // Get or create vendor for SSO integration
+    RentalVendor getOrCreateVendor(String token);
 }

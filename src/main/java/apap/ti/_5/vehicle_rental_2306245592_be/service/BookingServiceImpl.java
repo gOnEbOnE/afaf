@@ -14,9 +14,11 @@ import apap.ti._5.vehicle_rental_2306245592_be.restdto.request.booking.UpdateAdd
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.AvailableVehicleResponseDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.BookingChartDataDTO;
 import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.booking.SearchVehiclesResponseDTO;
+import apap.ti._5.vehicle_rental_2306245592_be.restdto.response.auth.AuthUserDTO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -28,17 +30,18 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
 @Service
 @Transactional
-@RequiredArgsConstructor 
+@RequiredArgsConstructor
+@Slf4j
 public class BookingServiceImpl implements BookingService {
 
     private final RentalBookingRepository rentalBookingRepository;
     private final VehicleRepository vehicleRepository;
     private final RentalAddOnRepository rentalAddOnRepository;
+    private final AuthService authService;
     private final LocationService locationService;
-    
+
     private static final Double DRIVER_COST_PER_DAY = 100000.0;
 
     // Lombok creates:
@@ -125,7 +128,7 @@ public class BookingServiceImpl implements BookingService {
         
         if (criteria.getPickUpTime().isBefore(minAllowedTime)) {
             System.out.println("❌ Pick-up time is too far in the past");
-            throw new RuntimeException("Pick-up time tidak boleh lebih dari 10 menit di masa lalu");
+            throw new RuntimeException("Pick-up time tidak boleh masa lalu");
         }
 
         // Calculate rental days
@@ -218,10 +221,46 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public RentalBooking createBookingWithAddOns(CreateBookingRequestDTO bookingDTO, AddAddOnsRequestDTO addOnsDTO) {
+    public RentalBooking createBookingWithAddOns(CreateBookingRequestDTO bookingDTO, AddAddOnsRequestDTO addOnsDTO, String token) {
+        // Get customer ID from token
+        AuthUserDTO currentUser = authService.getCurrentUser(token);
+        String customerId = currentUser.getId();
+        
+        System.out.println("👤 Customer ID from token: " + customerId);
+        
         // Validate vehicle exists
         Vehicle vehicle = vehicleRepository.findById(addOnsDTO.getVehicleId())
             .orElseThrow(() -> new RuntimeException("Vehicle not found"));
+
+        System.out.println("\n🔍 [VALIDATION] Checking vendor locations...");
+        System.out.println("   Vehicle: " + vehicle.getBrand() + " " + vehicle.getModel());
+        System.out.println("   Vendor: " + vehicle.getRentalVendor().getName());
+        System.out.println("   Pick-up Location (DTO): " + bookingDTO.getPickUpLocation());
+        System.out.println("   Drop-off Location (DTO): " + bookingDTO.getDropOffLocation());
+        
+        List<String> vendorLocations = vehicle.getRentalVendor().getListOfLocations();
+        
+        if (vendorLocations == null) {
+            System.out.println("❌ Vendor locations is NULL");
+            throw new RuntimeException("Data lokasi vendor tidak ditemukan");
+        }
+
+        System.out.println("   Vendor Locations: " + vendorLocations);
+        
+        boolean isPickUpValid = vendorLocations.contains(bookingDTO.getPickUpLocation());
+        boolean isDropOffValid = vendorLocations.contains(bookingDTO.getDropOffLocation());
+
+        System.out.println("   ✓ Pick-up location valid: " + isPickUpValid);
+        System.out.println("   ✓ Drop-off location valid: " + isDropOffValid);
+
+        if (!isPickUpValid || !isDropOffValid) {
+            String errorMsg = "Gagal Booking: Vendor kendaraan ini tidak beroperasi di lokasi Pick-up atau Drop-off yang diminta (" 
+                + bookingDTO.getPickUpLocation() + " / " + bookingDTO.getDropOffLocation() + ")";
+            System.out.println("❌ " + errorMsg);
+            throw new RuntimeException(errorMsg);
+        }
+        
+        System.out.println("✅ Location validation passed\n");
 
         // Generate booking ID
         String bookingId = generateBookingId();
@@ -247,6 +286,7 @@ public class BookingServiceImpl implements BookingService {
         // Create booking
         RentalBooking booking = new RentalBooking();
         booking.setId(bookingId);
+        booking.setCustomerId(customerId);  // ✅ Set customer ID dari token
         booking.setVehicle(vehicle);
         booking.setPickUpTime(bookingDTO.getPickUpTime());
         booking.setDropOffTime(bookingDTO.getDropOffTime());
@@ -259,9 +299,8 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(status);
         booking.setListOfAddOns(addOns);
 
-        // Vehicle stays "Available" until booking status changes to "Ongoing"
         System.out.println("🚗 Booking created with status: " + status);
-        System.out.println("   Vehicle status remains: " + vehicle.getStatus());
+        System.out.println("   Customer ID: " + customerId);
 
         return rentalBookingRepository.save(booking);
     }
@@ -845,6 +884,31 @@ public class BookingServiceImpl implements BookingService {
             throw new RuntimeException(e.getMessage());
         } finally {
             System.out.println("════════════════════════════════════════════════════");
+        }
+    }
+
+    // ✅ NEW METHOD: Get bookings by current customer (from token)
+    public List<RentalBooking> getBookingsByCurrentCustomer(String token) {
+        try {
+            AuthUserDTO user = authService.getCurrentUser(token);
+            String customerId = user.getId();
+            return rentalBookingRepository.findAllByCustomerId(customerId);
+        } catch (Exception e) {
+            log.error("Error getting bookings for current customer: {}", e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    // ✅ Update: Get not deleted bookings by current customer
+    public List<RentalBooking> getBookingsByCurrentCustomerNotDeleted(String token) {
+        try {
+            AuthUserDTO user = authService.getCurrentUser(token);
+            String customerId = user.getId();
+            // ✅ USE QUERY DARI REPOSITORY (JAUH LEBIH CLEAN)
+            return rentalBookingRepository.findByCustomerIdNotDeleted(customerId);
+        } catch (Exception e) {
+            log.error("Error getting not deleted bookings for current customer: {}", e.getMessage());
+            return new ArrayList<>();
         }
     }
 
